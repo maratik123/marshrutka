@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map</title>
+    <style>
+        :root {
+            --cell-size: 90px;
+            --gap-size: 1px;
+            --padding: 0px;
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --text-color: #2c3e50;
+        }
+
+        body {
+            font-family: Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 10px;
+            padding: 0px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background-color: #ecf0f1;
+            color: var(--text-color);
+        }
+
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        a:hover {
+            color: var(--secondary-color);
+        }
+
+        .container {
+            width: 100%;
+            margin: 0px;
+            padding: 10px;
+            background-color: #ffffff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            word-wrap: break-word;
+        }
+
+        .content {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            flex-direction: column;
+        }
+
+        .text-block {
+            text-align: left;
+            margin: 10px 0;
+            padding-left: 10px;
+            width: 100%;
+        }
+
+        .footer {
+            text-align: right;
+            margin: 10px 0;
+            padding-left: 10px;
+            padding-right: 10px;
+            width: 100%;
+        }
+
+        .map-grid-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            overflow: auto;
+        }
+
+        .map-grid {
+            display: grid;
+            gap: var(--gap-size);
+            width: auto;
+            max-width: 100%;
+            grid-template-columns: repeat(13, var(--cell-size));
+            grid-template-rows: repeat(13, var(--cell-size));
+            justify-items: center;
+        }
+
+        .map-cell {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            width: var(--cell-size);
+            height: var(--cell-size);
+            font-size: 32px;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .top-left-text, .top-right-text, .bottom-left-text, .bottom-right-text {
+            position: absolute;
+            font-size: 16px;
+            padding: 5%;
+        }
+
+        .top-left-text {
+            top: 5%;
+            left: 5%;
+        }
+
+        .top-right-text {
+            top: 5%;
+            right: 5%;
+        }
+
+        .bottom-left-text {
+            bottom: 5%;
+            left: 5%;
+        }
+
+        .bottom-right-text {
+            bottom: 5%;
+            right: 5%;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+
+            .text-block {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (min-width: 601px) {
+            .text-block {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .container {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="content">
+        <div class="text-block">
+            <p>Chat Wars World Map<br> Current online: <b>1769</b></p>
+            <p> • #1 🇮🇲Red Castle <b>49</b> 34.0% • #2 🇲🇴Green Castle <b>35</b> 24.3%<br> • #3 🇻🇦Yellow Castle <b>31</b>
+                21.5% • #4 🇪🇺Blue Castle <b>29</b> 20.1%</p>
+            <p><a href="https://t.me/ChatWarsBot">@ChatWarsBot</a></p>
+        </div>
+
+        <div class="map-grid-wrapper">
+            <div class="map-grid">
+
+                <div class="map-cell" title="6#6">
+                    <div class="top-left-text">🐗</div>
+                    <div class="top-right-text">6#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="5#6">
+                    <div class="top-left-text">🕸</div>
+                    <div class="top-right-text">5#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="4#6">
+                    <div class="top-left-text">💎</div>
+                    <div class="top-right-text">4#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="3#6">
+                    <div class="top-left-text">🪨</div>
+                    <div class="top-right-text">3#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="2#6">
+                    <div class="top-left-text">🦇</div>
+                    <div class="top-right-text">2#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#6">
+                    <div class="top-left-text">🦋</div>
+                    <div class="top-right-text">1#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6">
+                    <div class="top-left-text">🦌</div>
+                    <div class="top-right-text">6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> RG</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="1#6">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">1#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2#6">
+                    <div class="top-left-text">🍄</div>
+                    <div class="top-right-text">2#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="3#6">
+                    <div class="top-left-text">🍖</div>
+                    <div class="top-right-text">3#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="4#6">
+                    <div class="top-left-text">🧱</div>
+                    <div class="top-right-text">4#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5#6">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">5#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="6#6">
+                    <div class="top-left-text">🐗</div>
+                    <div class="top-right-text">6#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6#5">
+                    <div class="top-left-text">🐑</div>
+                    <div class="top-right-text">6#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="5#5">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">5#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4#5">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">4#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    ⛲️
+                </div>
+
+                <div class="map-cell" title="3#5">
+                    <div class="top-left-text">🐐</div>
+                    <div class="top-right-text">3#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="2#5">
+                    <div class="top-left-text">🐗</div>
+                    <div class="top-right-text">2#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="1#5">
+                    <div class="top-left-text">🪵</div>
+                    <div class="top-right-text">1#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="5">
+                    <div class="top-left-text">✨</div>
+                    <div class="top-right-text">5</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> RG</div>
+                    🌳
+                </div>
+
+                <div class="map-cell" title="1#5">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">1#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2#5">
+                    <div class="top-left-text">🕸</div>
+                    <div class="top-right-text">2#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="3#5">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">3#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4#5">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">4#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    ⛲️
+                </div>
+
+                <div class="map-cell" title="5#5">
+                    <div class="top-left-text">🕸</div>
+                    <div class="top-right-text">5#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="6#5">
+                    <div class="top-left-text">🐟</div>
+                    <div class="top-right-text">6#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="6#4">
+                    <div class="top-left-text">🐟</div>
+                    <div class="top-right-text">6#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5#4">
+                    <div class="top-left-text">🕸</div>
+                    <div class="top-right-text">5#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="4#4">
+                    <div class="top-left-text">💎</div>
+                    <div class="top-right-text">4#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="3#4">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">3#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2#4">
+                    <div class="top-left-text">🍄</div>
+                    <div class="top-right-text">2#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="1#4">
+                    <div class="top-left-text">🍇</div>
+                    <div class="top-right-text">1#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4">
+                    <div class="top-left-text">🐐</div>
+                    <div class="top-right-text">4</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> RG</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#4">
+                    <div class="top-left-text">🪵</div>
+                    <div class="top-right-text">1#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="2#4">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">2#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🏰
+                </div>
+
+                <div class="map-cell" title="3#4">
+                    <div class="top-left-text">🍖</div>
+                    <div class="top-right-text">3#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="4#4">
+                    <div class="top-left-text">🐟</div>
+                    <div class="top-right-text">4#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5#4">
+                    <div class="top-left-text">🍏</div>
+                    <div class="top-right-text">5#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6#4">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">6#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="6#3">
+                    <div class="top-left-text">🦌</div>
+                    <div class="top-right-text">6#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="5#3">
+                    <div class="top-left-text">🧱</div>
+                    <div class="top-right-text">5#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="4#3">
+                    <div class="top-left-text">🪵</div>
+                    <div class="top-right-text">4#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="3#3">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">3#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🔥
+                </div>
+
+                <div class="map-cell" title="2#3">
+                    <div class="top-left-text">🪨</div>
+                    <div class="top-right-text">2#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#3">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">1#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="3">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">3</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> RG</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="1#3">
+                    <div class="top-left-text">🦋</div>
+                    <div class="top-right-text">1#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="2#3">
+                    <div class="top-left-text">🪨</div>
+                    <div class="top-right-text">2#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="3#3">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">3#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🔥
+                </div>
+
+                <div class="map-cell" title="4#3">
+                    <div class="top-left-text">🪵</div>
+                    <div class="top-right-text">4#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="5#3">
+                    <div class="top-left-text">🦋</div>
+                    <div class="top-right-text">5#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6#3">
+                    <div class="top-left-text">🍇</div>
+                    <div class="top-right-text">6#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="6#2">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">6#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🗼
+                </div>
+
+                <div class="map-cell" title="5#2">
+                    <div class="top-left-text">🕸</div>
+                    <div class="top-right-text">5#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="4#2">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">4#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏰
+                </div>
+
+                <div class="map-cell" title="3#2">
+                    <div class="top-left-text">🐑</div>
+                    <div class="top-right-text">3#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2#2">
+                    <div class="top-left-text">🧱</div>
+                    <div class="top-right-text">2#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#2">
+                    <div class="top-left-text">🦌</div>
+                    <div class="top-right-text">1#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="2">
+                    <div class="top-left-text">🍖</div>
+                    <div class="top-right-text">2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> RG</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="1#2">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">1#2</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2#2">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">2#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="3#2">
+                    <div class="top-left-text">🐑</div>
+                    <div class="top-right-text">3#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4#2">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">4#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🗿
+                </div>
+
+                <div class="map-cell" title="5#2">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">5#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="6#2">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">6#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🗼
+                </div>
+
+                <div class="map-cell" title="6#1">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">6#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="5#1">
+                    <div class="top-left-text">🦇</div>
+                    <div class="top-right-text">5#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="4#1">
+                    <div class="top-left-text">🍖</div>
+                    <div class="top-right-text">4#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="3#1">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">3#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🗿
+                </div>
+
+                <div class="map-cell" title="2#1">
+                    <div class="top-left-text">🐐</div>
+                    <div class="top-right-text">2#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#1">
+                    <div class="top-left-text">🍖</div>
+                    <div class="top-right-text">1#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> R</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="1">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> RG</div>
+                    🕳
+                </div>
+
+                <div class="map-cell" title="1#1">
+                    <div class="top-left-text">🍖</div>
+                    <div class="top-right-text">1#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="2#1">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">2#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="3#1">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">3#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> G</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4#1">
+                    <div class="top-left-text">💎</div>
+                    <div class="top-right-text">4#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> G</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5#1">
+                    <div class="top-left-text">🦌</div>
+                    <div class="top-right-text">5#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6#1">
+                    <div class="top-left-text">🦇</div>
+                    <div class="top-right-text">6#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> G</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="6">
+                    <div class="top-left-text">🐟</div>
+                    <div class="top-right-text">6</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> BR</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5">
+                    <div class="top-left-text">✨</div>
+                    <div class="top-right-text">5</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> BR</div>
+                    🌳
+                </div>
+
+                <div class="map-cell" title="4">
+                    <div class="top-left-text">🐑</div>
+                    <div class="top-right-text">4</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> BR</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="3">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> BR</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2">
+                    <div class="top-left-text">🪵</div>
+                    <div class="top-right-text">2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> BR</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="1">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> BR</div>
+                    🛖
+                </div>
+
+                <div class="map-cell" title="0#0">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">0#0</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"></div>
+                    🏛
+                </div>
+
+                <div class="map-cell" title="1">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> GY</div>
+                    ⛺️
+                </div>
+
+                <div class="map-cell" title="2">
+                    <div class="top-left-text">🦌</div>
+                    <div class="top-right-text">2</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> GY</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="3">
+                    <div class="top-left-text">🐑</div>
+                    <div class="top-right-text">3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> GY</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4">
+                    <div class="top-left-text">🦇</div>
+                    <div class="top-right-text">4</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> GY</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5">
+                    <div class="top-left-text">✨</div>
+                    <div class="top-right-text">5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> GY</div>
+                    🌳
+                </div>
+
+                <div class="map-cell" title="6">
+                    <div class="top-left-text">🧱</div>
+                    <div class="top-right-text">6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> GY</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="6#1">
+                    <div class="top-left-text">🕸</div>
+                    <div class="top-right-text">6#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> B</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5#1">
+                    <div class="top-left-text">🍏</div>
+                    <div class="top-right-text">5#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="4#1">
+                    <div class="top-left-text">🦌</div>
+                    <div class="top-right-text">4#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> B</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="3#1">
+                    <div class="top-left-text">🦋</div>
+                    <div class="top-right-text">3#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> B</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="2#1">
+                    <div class="top-left-text">🪨</div>
+                    <div class="top-right-text">2#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#1">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">1#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="1">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> YB</div>
+                    🏟
+                </div>
+
+                <div class="map-cell" title="1#1">
+                    <div class="top-left-text">🍇</div>
+                    <div class="top-right-text">1#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2#1">
+                    <div class="top-left-text">🦇</div>
+                    <div class="top-right-text">2#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> Y</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="3#1">
+                    <div class="top-left-text">🦋</div>
+                    <div class="top-right-text">3#1</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="4#1">
+                    <div class="top-left-text">💎</div>
+                    <div class="top-right-text">4#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> Y</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5#1">
+                    <div class="top-left-text">🦌</div>
+                    <div class="top-right-text">5#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6#1">
+                    <div class="top-left-text">🐗</div>
+                    <div class="top-right-text">6#1</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6#2">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">6#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🗼
+                </div>
+
+                <div class="map-cell" title="5#2">
+                    <div class="top-left-text">🍇</div>
+                    <div class="top-right-text">5#2</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4#2">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">4#2</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="3#2">
+                    <div class="top-left-text">🪵</div>
+                    <div class="top-right-text">3#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="2#2">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">2#2</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="1#2">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">1#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2">
+                    <div class="top-left-text">🐐</div>
+                    <div class="top-right-text">2</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> YB</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#2">
+                    <div class="top-left-text">🦋</div>
+                    <div class="top-right-text">1#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="2#2">
+                    <div class="top-left-text">🍄</div>
+                    <div class="top-right-text">2#2</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="3#2">
+                    <div class="top-left-text">🪵</div>
+                    <div class="top-right-text">3#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="4#2">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">4#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🏰
+                </div>
+
+                <div class="map-cell" title="5#2">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">5#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="6#2">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">6#2</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🗼
+                </div>
+
+                <div class="map-cell" title="6#3">
+                    <div class="top-left-text">🧱</div>
+                    <div class="top-right-text">6#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5#3">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">5#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4#3">
+                    <div class="top-left-text">🪨</div>
+                    <div class="top-right-text">4#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="3#3">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">3#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🔥
+                </div>
+
+                <div class="map-cell" title="2#3">
+                    <div class="top-left-text">🐑</div>
+                    <div class="top-right-text">2#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="1#3">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">1#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🗿
+                </div>
+
+                <div class="map-cell" title="3">
+                    <div class="top-left-text">🪨</div>
+                    <div class="top-right-text">3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> YB</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#3">
+                    <div class="top-left-text">🐐</div>
+                    <div class="top-right-text">1#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="2#3">
+                    <div class="top-left-text">🍏</div>
+                    <div class="top-right-text">2#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="3#3">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">3#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🔥
+                </div>
+
+                <div class="map-cell" title="4#3">
+                    <div class="top-left-text">🐑</div>
+                    <div class="top-right-text">4#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="5#3">
+                    <div class="top-left-text">🐐</div>
+                    <div class="top-right-text">5#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="6#3">
+                    <div class="top-left-text">🐗</div>
+                    <div class="top-right-text">6#3</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6#4">
+                    <div class="top-left-text">🕸</div>
+                    <div class="top-right-text">6#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5#4">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">5#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4#4">
+                    <div class="top-left-text">🦇</div>
+                    <div class="top-right-text">4#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="3#4">
+                    <div class="top-left-text">🍏</div>
+                    <div class="top-right-text">3#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="2#4">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">2#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🏰
+                </div>
+
+                <div class="map-cell" title="1#4">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">1#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> YB</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="1#4">
+                    <div class="top-left-text">🌾</div>
+                    <div class="top-right-text">1#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2#4">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">2#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🗿
+                </div>
+
+                <div class="map-cell" title="3#4">
+                    <div class="top-left-text">🪨</div>
+                    <div class="top-right-text">3#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="4#4">
+                    <div class="top-left-text">🐑</div>
+                    <div class="top-right-text">4#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="5#4">
+                    <div class="top-left-text">🍏</div>
+                    <div class="top-right-text">5#4</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6#4">
+                    <div class="top-left-text">🍖</div>
+                    <div class="top-right-text">6#4</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6#5">
+                    <div class="top-left-text">💎</div>
+                    <div class="top-right-text">6#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="5#5">
+                    <div class="top-left-text">🪵</div>
+                    <div class="top-right-text">5#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="4#5">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">4#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    ⛲️
+                </div>
+
+                <div class="map-cell" title="3#5">
+                    <div class="top-left-text">🍇</div>
+                    <div class="top-right-text">3#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2#5">
+                    <div class="top-left-text">🦇</div>
+                    <div class="top-right-text">2#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#5">
+                    <div class="top-left-text">🍇</div>
+                    <div class="top-right-text">1#5</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="5">
+                    <div class="top-left-text">✨</div>
+                    <div class="top-right-text">5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> YB</div>
+                    🌳
+                </div>
+
+                <div class="map-cell" title="1#5">
+                    <div class="top-left-text">🦇</div>
+                    <div class="top-right-text">1#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="2#5">
+                    <div class="top-left-text">🍄</div>
+                    <div class="top-right-text">2#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="3#5">
+                    <div class="top-left-text">🍏</div>
+                    <div class="top-right-text">3#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="4#5">
+                    <div class="top-left-text"></div>
+                    <div class="top-right-text">4#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    ⛲️
+                </div>
+
+                <div class="map-cell" title="5#5">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">5#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="6#5">
+                    <div class="top-left-text">🍇</div>
+                    <div class="top-right-text">6#5</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="6#6">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">6#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="5#6">
+                    <div class="top-left-text">🍄</div>
+                    <div class="top-right-text">5#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="4#6">
+                    <div class="top-left-text">🐗</div>
+                    <div class="top-right-text">4#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="3#6">
+                    <div class="top-left-text">🍄</div>
+                    <div class="top-right-text">3#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> B</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="2#6">
+                    <div class="top-left-text">🐐</div>
+                    <div class="top-right-text">2#6</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> B</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#6">
+                    <div class="top-left-text">💎</div>
+                    <div class="top-right-text">1#6</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> B</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="6">
+                    <div class="top-left-text">🐟</div>
+                    <div class="top-right-text">6</div>
+                    <div class="bottom-left-text">🛡️</div>
+                    <div class="bottom-right-text"> YB</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="1#6">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">1#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="2#6">
+                    <div class="top-left-text">🧱</div>
+                    <div class="top-right-text">2#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🏔
+                </div>
+
+                <div class="map-cell" title="3#6">
+                    <div class="top-left-text">🍇</div>
+                    <div class="top-right-text">3#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌻
+                </div>
+
+                <div class="map-cell" title="4#6">
+                    <div class="top-left-text">🍖</div>
+                    <div class="top-right-text">4#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="5#6">
+                    <div class="top-left-text">🍏</div>
+                    <div class="top-right-text">5#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌲
+                </div>
+
+                <div class="map-cell" title="6#6">
+                    <div class="top-left-text">🐔</div>
+                    <div class="top-right-text">6#6</div>
+                    <div class="bottom-left-text"></div>
+                    <div class="bottom-right-text"> Y</div>
+                    🌻
+                </div>
+
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>
+                2024 (c) Chat Wars
+            </p>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const grid = document.querySelector(".map-grid");
+        const columns = "13";
+        const rows = "13";
+        grid.style.gridTemplateColumns = `repeat(${columns}, var(--cell-size))`;
+        grid.style.gridTemplateRows = `repeat(${rows}, var(--cell-size))`;
+    });
+</script>
+</body>
+</html>
