@@ -1,13 +1,25 @@
 use egui::load::{BytesLoadResult, BytesPoll};
-use egui::{ScrollArea, Visuals};
+use egui::{ColorImage, ScrollArea, TextureHandle, TextureOptions, Visuals};
+use resvg::tiny_skia::Pixmap;
+use resvg::usvg::{Options, Transform, Tree};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::cell::OnceCell;
+use std::collections::HashMap;
+
+struct EmojiTextures {
+    p32: TextureHandle,
+    p16: TextureHandle,
+}
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
 pub struct MarshrutkaApp {
     #[serde(skip)]
     raw_map: Option<BytesLoadResult>,
+    #[serde(skip)]
+    emojis: OnceCell<HashMap<char, EmojiTextures>>,
+    show_settings: bool,
 }
 
 impl MarshrutkaApp {
@@ -33,6 +45,10 @@ impl MarshrutkaApp {
         result
     }
 
+    fn emojis(&mut self, ctx: &egui::Context) -> &HashMap<char, EmojiTextures> {
+        self.emojis.get_or_init(|| init_emojis(ctx))
+    }
+
     fn top_menu(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
@@ -41,11 +57,15 @@ impl MarshrutkaApp {
 
                 let is_web = cfg!(target_arch = "wasm32");
                 ui.menu_button("File", |ui| {
+                    if ui.button("Settings").clicked() {
+                        self.show_settings ^= true;
+                        ui.close_menu();
+                    }
                     // NOTE: no File->Quit on web pages
                     if !is_web {
                         ui.separator();
                         if ui.button("Quit").clicked() {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                             ui.close_menu();
                         }
                     }
@@ -55,10 +75,96 @@ impl MarshrutkaApp {
     }
 }
 
+macro_rules! char_to_emoji_map {
+    [$(($ch:expr, $path:expr)),* $(,)?] => {
+        [$((
+            $ch,
+            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/images/", $path)).as_ref(),
+        )),*]
+    }
+}
+
+fn svg_to_texture(
+    ctx: &egui::Context,
+    name: impl Into<String>,
+    tree: &Tree,
+    width: u32,
+) -> TextureHandle {
+    let size = tree.size().to_int_size().scale_to_width(width).unwrap();
+
+    let mut pixmap = Pixmap::new(size.width(), size.height()).unwrap();
+    let mut pixmap = pixmap.as_mut();
+    resvg::render(tree, Transform::identity(), &mut pixmap);
+    let image = ColorImage::from_rgba_premultiplied(
+        [pixmap.width() as _, pixmap.height() as _],
+        pixmap.data_mut(),
+    );
+    ctx.load_texture(name, image, TextureOptions::default())
+}
+
+fn init_emojis(ctx: &egui::Context) -> HashMap<char, EmojiTextures> {
+    char_to_emoji_map![
+        ('\u{1f332}', "emoji_u1f332.svg"),
+        ('\u{1f333}', "emoji_u1f333.svg"),
+        ('\u{1f33b}', "emoji_u1f33b.svg"),
+        ('\u{1f33e}', "emoji_u1f33e.svg"),
+        ('\u{1f344}', "emoji_u1f344.svg"),
+        ('\u{1f347}', "emoji_u1f347.svg"),
+        ('\u{1f34f}', "emoji_u1f34f.svg"),
+        ('\u{1f356}', "emoji_u1f356.svg"),
+        ('\u{1f3d4}', "emoji_u1f3d4.svg"),
+        ('\u{1f3db}', "emoji_u1f3db.svg"),
+        ('\u{1f3df}', "emoji_u1f3df.svg"),
+        ('\u{1f3f0}', "emoji_u1f3f0.svg"),
+        ('\u{1f410}', "emoji_u1f410.svg"),
+        ('\u{1f411}', "emoji_u1f411.svg"),
+        ('\u{1f414}', "emoji_u1f414.svg"),
+        ('\u{1f417}', "emoji_u1f417.svg"),
+        ('\u{1f41f}', "emoji_u1f41f.svg"),
+        ('\u{1f48e}', "emoji_u1f48e.svg"),
+        ('\u{1f525}', "emoji_u1f525.svg"),
+        ('\u{1f573}', "emoji_u1f573.svg"),
+        ('\u{1f578}', "emoji_u1f578.svg"),
+        ('\u{1f5fc}', "emoji_u1f5fc.svg"),
+        ('\u{1f5ff}', "emoji_u1f5ff.svg"),
+        ('\u{1f6d6}', "emoji_u1f6d6.svg"),
+        ('\u{1f6e1}', "emoji_u1f6e1.svg"),
+        ('\u{1f987}', "emoji_u1f987.svg"),
+        ('\u{1f98b}', "emoji_u1f98b.svg"),
+        ('\u{1f98c}', "emoji_u1f98c.svg"),
+        ('\u{1f9f1}', "emoji_u1f9f1.svg"),
+        ('\u{1faa8}', "emoji_u1faa8.svg"),
+        ('\u{1fab5}', "emoji_u1fab5.svg"),
+        ('\u{26f2}', "emoji_u26f2.svg"),
+        ('\u{26fa}', "emoji_u26fa.svg"),
+        ('\u{2728}', "emoji_u2728.svg"),
+    ]
+    .into_iter()
+    .map(|(ch, content)| {
+        let rtree = Tree::from_data(content, &Options::default()).unwrap();
+        let svg_to_texture =
+            |ctx, width| svg_to_texture(ctx, format!("{ch}|{width}"), &rtree, width);
+        (
+            ch,
+            EmojiTextures {
+                p32: svg_to_texture(ctx, 32),
+                p16: svg_to_texture(ctx, 16),
+            },
+        )
+    })
+    .collect()
+}
+
 impl eframe::App for MarshrutkaApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.top_menu(ctx);
+
+        egui::Window::new("Settings")
+            .open(&mut self.show_settings)
+            .show(ctx, |ui| {
+                ui.heading("Settings");
+            });
 
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
@@ -72,7 +178,7 @@ impl eframe::App for MarshrutkaApp {
 
             let s = match self.raw_map.as_ref().unwrap() {
                 Ok(BytesPoll::Pending { .. }) => {
-                    ctx.request_repaint();
+                    ui.ctx().request_repaint();
                     Cow::Borrowed(include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
                         "/Map.html"
@@ -82,7 +188,7 @@ impl eframe::App for MarshrutkaApp {
                 Err(e) => Cow::Owned(e.to_string()),
             };
 
-            ScrollArea::vertical().show(ui, |ui| {
+            ScrollArea::both().show(ui, |ui| {
                 ui.label(s);
             });
         });

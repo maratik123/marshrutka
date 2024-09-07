@@ -19,6 +19,7 @@ eframe = { version = "0.28", default-features = false, features = [
 ] }
 log = "0.4"
 egui_extras = { version = "0.28", features = ["http"] }
+resvg = { version = "0.43", default-features = false }
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
