@@ -1,6 +1,6 @@
 use crate::emoji::EmojiMap;
 use egui::load::BytesPoll;
-use egui::{ScrollArea, Visuals};
+use egui::{Grid, Label, ScrollArea, Vec2, Visuals};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
@@ -87,7 +87,7 @@ impl eframe::App for MarshrutkaApp {
                 .try_load_bytes("https://api.chatwars.me/webview/map");
 
             {
-                let _s = match bytes {
+                let s = match bytes {
                     Ok(BytesPoll::Pending { .. }) => {
                         ui.ctx().request_repaint();
                         Cow::Borrowed("Loading...")
@@ -102,7 +102,23 @@ impl eframe::App for MarshrutkaApp {
                 };
 
                 ScrollArea::both().show(ui, |ui| {
-                    ui.label(_s);
+                    Grid::new("map_grid")
+                        .striped(true)
+                        .spacing(Vec2::splat(2.0))
+                        .max_col_width(64.0)
+                        .min_col_width(64.0)
+                        .min_row_height(64.0)
+                        .show(ui, |ui| {
+                            for i in 0..13 {
+                                for j in 0..13 {
+                                    let label = Label::new(s.clone());
+                                    ScrollArea::both()
+                                        .id_source(i * 13 + j)
+                                        .show(ui, |ui| ui.add(label));
+                                }
+                                ui.end_row();
+                            }
+                        });
                 });
             }
         });
