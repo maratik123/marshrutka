@@ -4,17 +4,23 @@ use egui::Vec2;
 use resvg::usvg::{Options, Transform, Tree};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Write};
-use tiny_skia::Pixmap;
+use tiny_skia::{IntSize, Pixmap};
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Ord, PartialOrd)]
-pub struct EmojiCode {
-    pub c0: char,
-    pub c1: Option<char>,
+pub enum EmojiCode {
+    Chars { c0: char, c1: Option<char> },
+    Box,
 }
 
 pub enum EmojiContent {
     Alias(EmojiCode),
-    Texture(EmojiTexture),
+    EmojiTexture(EmojiTexture),
+    Texture(TextureHandle),
+}
+
+pub enum EmojiData<'a> {
+    EmojiTexture(&'a EmojiTexture),
+    Texture(&'a TextureHandle),
 }
 
 pub struct EmojiTexture {
@@ -29,16 +35,21 @@ impl EmojiMap {
         Self(init_emojis(ctx))
     }
 
-    pub fn get_texture(&self, emoji_code: &EmojiCode) -> Option<&EmojiTexture> {
+    pub fn get_texture<'a>(&'a self, emoji_code: &'_ EmojiCode) -> Option<EmojiData<'a>> {
         let mut content = self.0.get(emoji_code)?;
-        loop {
+        Some(loop {
             match content {
                 EmojiContent::Alias(emoji_code) => {
                     content = self.0.get(emoji_code)?;
                 }
-                EmojiContent::Texture(texture) => break Some(texture),
+                EmojiContent::EmojiTexture(texture) => {
+                    break EmojiData::EmojiTexture(texture);
+                }
+                EmojiContent::Texture(texture) => {
+                    break EmojiData::Texture(texture);
+                }
             }
-        }
+        })
     }
 }
 
@@ -58,10 +69,18 @@ fn svg_to_texture(
     tree: &Tree,
     width: u32,
 ) -> TextureHandle {
-    let size = tree.size().to_int_size().scale_to_width(width).unwrap();
-
+    let svg_size = tree.size();
+    let size = svg_size
+        .to_int_size()
+        .scale_to_width(width)
+        .and_then(|s| s.scale_by(ctx.pixels_per_point()))
+        .unwrap_or_else(|| IntSize::from_wh(width, width).unwrap());
+    let transform = Transform::from_scale(
+        size.width() as f32 / svg_size.width(),
+        size.height() as f32 / svg_size.height(),
+    );
     let mut pixmap = Pixmap::new(size.width(), size.height()).unwrap();
-    resvg::render(tree, Transform::identity(), &mut pixmap.as_mut());
+    resvg::render(tree, transform, &mut pixmap.as_mut());
     let image = ColorImage::from_rgba_premultiplied(
         [pixmap.width() as _, pixmap.height() as _],
         pixmap.data(),
@@ -145,6 +164,7 @@ fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiContent> {
         .into_iter()
         .map(|(from, to)| (from, to.into())),
     )
+    //  .chain(iter::once(EmojiCode::Box, EmojiContent::Texture(EmojiTexture)))
     .collect()
 }
 
@@ -156,27 +176,34 @@ impl From<EmojiCode> for EmojiContent {
 
 impl From<EmojiTexture> for EmojiContent {
     fn from(emoji_texture: EmojiTexture) -> Self {
-        Self::Texture(emoji_texture)
+        Self::EmojiTexture(emoji_texture)
     }
 }
 
 impl From<char> for EmojiCode {
     fn from(c0: char) -> Self {
-        Self { c0, c1: None }
+        Self::Chars { c0, c1: None }
     }
 }
 
 impl From<(char, char)> for EmojiCode {
     fn from((c0, c1): (char, char)) -> Self {
-        Self { c0, c1: Some(c1) }
+        Self::Chars { c0, c1: Some(c1) }
     }
 }
 
 impl Display for EmojiCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_char(self.c0)?;
-        if let Some(c1) = self.c1 {
-            f.write_char(c1)?;
+        match self {
+            EmojiCode::Chars { c0, c1 } => {
+                f.write_char(*c0)?;
+                if let Some(c1) = c1 {
+                    f.write_char(*c1)?;
+                }
+            }
+            EmojiCode::Box => {
+                f.write_str("<Box>")?;
+            }
         }
         Ok(())
     }

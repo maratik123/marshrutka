@@ -1,10 +1,10 @@
 use crate::app::{FONT16, FONT32};
-use crate::emoji::{EmojiCode, EmojiMap};
+use crate::emoji::{EmojiCode, EmojiData, EmojiMap};
 use crate::grid::CELL_SIZE;
 use egui::{
-    Align, Align2, Color32, Margin, Painter, Pos2, Rect, Sense, TextStyle, TextureHandle, Ui, Vec2,
+    Align2, Color32, Margin, Painter, Pos2, Rect, Rounding, Sense, TextStyle, TextureHandle, Ui,
+    Vec2,
 };
-use log::info;
 
 pub enum CellElement {
     Text(String),
@@ -13,7 +13,7 @@ pub enum CellElement {
 
 #[derive(Default)]
 pub struct Cell {
-    pub color32: Color32,
+    pub color32: Option<Color32>,
     pub top_left: Option<CellElement>,
     pub top_right: Option<CellElement>,
     pub bottom_left: Option<CellElement>,
@@ -31,6 +31,9 @@ impl Cell {
     pub fn ui_content(&self, ui: &mut Ui, emoji_map: &EmojiMap) {
         let (response, painter) = ui.allocate_painter(Vec2::splat(CELL_SIZE), Sense::click());
         let rect = response.rect - Margin::same(9.0);
+        if let Some(color32) = self.color32 {
+            painter.rect_filled(response.rect, Rounding::ZERO, color32);
+        }
 
         self.draw_element(
             ui,
@@ -103,8 +106,11 @@ impl Cell {
                     None => {
                         self.draw_text(ui, painter, emoji_code, attrs);
                     }
-                    Some(texture) => {
-                        self.draw_image(painter, texture.get(attrs.large), attrs);
+                    Some(EmojiData::EmojiTexture(texture)) => {
+                        self.draw_emoji_image(painter, texture.get(attrs.large), attrs);
+                    }
+                    Some(EmojiData::Texture(_)) => {
+                        self.draw_text(ui, painter, emoji_code, attrs);
                     }
                 },
                 CellElement::Text(text) => {
@@ -129,21 +135,25 @@ impl Cell {
         );
     }
 
-    fn draw_image(
+    fn draw_emoji_image(
         &self,
         painter: &Painter,
         (image, image_size): (&TextureHandle, Vec2),
         attrs: DrawAttrs,
     ) {
         let image_rect = attrs.align.align_size_within_rect(image_size, attrs.rect);
-        println!(
-            "attrs.align = {:?}, attrs.rect = {}, image_size = {image_size}, image_rect = {image_rect}",
-            attrs.align,
-            attrs.rect
-        );
         painter.image(
             image.id(),
             image_rect,
+            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+            Color32::WHITE,
+        );
+    }
+
+    fn draw_image(&self, painter: &Painter, image: &TextureHandle, rect: Rect) {
+        painter.image(
+            image.id(),
+            rect,
             Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
             Color32::WHITE,
         );

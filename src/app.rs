@@ -2,7 +2,10 @@ use crate::cell::{Cell, CellElement};
 use crate::emoji::EmojiMap;
 use crate::grid::{CELL_SIZE, MAP_SIZE};
 use egui::load::BytesPoll;
-use egui::{Color32, FontId, Grid, Label, ScrollArea, TextStyle, Vec2, Visuals};
+use egui::Key::V;
+use egui::{
+    Button, Color32, FontId, Frame, Grid, Label, ScrollArea, Style, TextStyle, Ui, Vec2, Visuals,
+};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
@@ -44,6 +47,7 @@ impl MarshrutkaApp {
             TextStyle::Name(FONT16.into()),
             FontId::new(16.0, body_font_family),
         );
+        styles.visuals = Visuals::dark();
         cc.egui_ctx.set_style(styles);
 
         result
@@ -56,9 +60,6 @@ impl MarshrutkaApp {
     fn top_menu(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                egui::widgets::global_dark_light_mode_switch(ui);
-                ui.separator();
-
                 let is_web = cfg!(target_arch = "wasm32");
                 ui.menu_button("File", |ui| {
                     if ui.button("Settings").clicked() {
@@ -99,20 +100,6 @@ impl eframe::App for MarshrutkaApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
             ui.heading("Marshrutka");
-            ui.image(
-                &self
-                    .emojis(ui.ctx())
-                    .get_texture(&'\u{1f33e}'.into())
-                    .unwrap()
-                    .p32,
-            );
-            ui.image(
-                &self
-                    .emojis(ui.ctx())
-                    .get_texture(&'\u{1f33e}'.into())
-                    .unwrap()
-                    .p16,
-            );
 
             let bytes = ui
                 .ctx()
@@ -135,16 +122,16 @@ impl eframe::App for MarshrutkaApp {
 
                 ScrollArea::both().show(ui, |ui| {
                     Grid::new("map_grid")
-                        .striped(true)
+                        .striped(false)
                         .spacing(Vec2::splat(1.0))
-                        .min_col_width(CELL_SIZE * 2.0)
-                        .min_row_height(CELL_SIZE * 2.0)
+                        .min_col_width(CELL_SIZE)
+                        .min_row_height(CELL_SIZE)
                         .show(ui, |ui| {
                             for i in 0..MAP_SIZE {
                                 for j in 0..MAP_SIZE {
                                     ScrollArea::both().id_source((i, j)).show(ui, |ui| {
                                         Cell {
-                                            color32: Color32::PLACEHOLDER,
+                                            color32: Some(Color32::from_additive_luminance(10)),
                                             top_left: Some(CellElement::Text("TL".to_string())),
                                             top_right: Some(CellElement::Emoji(
                                                 ('\u{26fa}', '\u{fe0f}').into(),
