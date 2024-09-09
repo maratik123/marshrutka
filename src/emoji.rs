@@ -1,5 +1,6 @@
 use eframe::epaint::textures::TextureOptions;
 use eframe::epaint::{ColorImage, TextureHandle};
+use egui::Vec2;
 use resvg::usvg::{Options, Transform, Tree};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Write};
@@ -37,6 +38,16 @@ impl EmojiMap {
                 }
                 EmojiContent::Texture(texture) => break Some(texture),
             }
+        }
+    }
+}
+
+impl EmojiTexture {
+    pub fn get(&self, large: bool) -> (&TextureHandle, Vec2) {
+        if large {
+            (&self.p32, Vec2::splat(32.0))
+        } else {
+            (&self.p16, Vec2::splat(16.0))
         }
     }
 }

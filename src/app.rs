@@ -1,9 +1,12 @@
+use crate::cell::{Cell, CellElement};
 use crate::emoji::EmojiMap;
+use crate::grid::{CELL_SIZE, MAP_SIZE};
 use egui::load::BytesPoll;
-use egui::{Grid, Label, ScrollArea, Vec2, Visuals};
+use egui::{Color32, FontId, Grid, Label, ScrollArea, TextStyle, Vec2, Visuals};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
+use std::sync::{Arc, LazyLock};
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -12,6 +15,9 @@ pub struct MarshrutkaApp {
     emojis: OnceCell<EmojiMap>,
     show_settings: bool,
 }
+
+pub const FONT32: &str = "32";
+pub const FONT16: &str = "16";
 
 impl MarshrutkaApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
@@ -27,6 +33,18 @@ impl MarshrutkaApp {
         };
         egui_extras::install_image_loaders(&cc.egui_ctx);
         cc.egui_ctx.set_visuals(Visuals::light());
+        let body_font_family = TextStyle::Body.resolve(&cc.egui_ctx.style()).family;
+        let mut styles = (*cc.egui_ctx.style()).clone();
+
+        styles.text_styles.insert(
+            TextStyle::Name(FONT32.into()),
+            FontId::new(32.0, body_font_family.clone()),
+        );
+        styles.text_styles.insert(
+            TextStyle::Name(FONT16.into()),
+            FontId::new(16.0, body_font_family),
+        );
+        cc.egui_ctx.set_style(styles);
 
         result
     }
@@ -81,6 +99,20 @@ impl eframe::App for MarshrutkaApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
             ui.heading("Marshrutka");
+            ui.image(
+                &self
+                    .emojis(ui.ctx())
+                    .get_texture(&'\u{1f33e}'.into())
+                    .unwrap()
+                    .p32,
+            );
+            ui.image(
+                &self
+                    .emojis(ui.ctx())
+                    .get_texture(&'\u{1f33e}'.into())
+                    .unwrap()
+                    .p16,
+            );
 
             let bytes = ui
                 .ctx()
@@ -104,17 +136,25 @@ impl eframe::App for MarshrutkaApp {
                 ScrollArea::both().show(ui, |ui| {
                     Grid::new("map_grid")
                         .striped(true)
-                        .spacing(Vec2::splat(2.0))
-                        .max_col_width(64.0)
-                        .min_col_width(64.0)
-                        .min_row_height(64.0)
+                        .spacing(Vec2::splat(1.0))
+                        .min_col_width(CELL_SIZE * 2.0)
+                        .min_row_height(CELL_SIZE * 2.0)
                         .show(ui, |ui| {
-                            for i in 0..13 {
-                                for j in 0..13 {
-                                    let label = Label::new(s.clone());
-                                    ScrollArea::both()
-                                        .id_source(i * 13 + j)
-                                        .show(ui, |ui| ui.add(label));
+                            for i in 0..MAP_SIZE {
+                                for j in 0..MAP_SIZE {
+                                    ScrollArea::both().id_source((i, j)).show(ui, |ui| {
+                                        Cell {
+                                            color32: Color32::PLACEHOLDER,
+                                            top_left: Some(CellElement::Text("TL".to_string())),
+                                            top_right: Some(CellElement::Emoji(
+                                                ('\u{26fa}', '\u{fe0f}').into(),
+                                            )),
+                                            bottom_left: Some(CellElement::Text("BL".to_string())),
+                                            bottom_right: Some(CellElement::Text("BR".to_string())),
+                                            center: Some(CellElement::Emoji('\u{1f33e}'.into())),
+                                        }
+                                        .ui_content(ui, self.emojis(ui.ctx()));
+                                    });
                                 }
                                 ui.end_row();
                             }
