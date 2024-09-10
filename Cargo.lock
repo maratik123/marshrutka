@@ -1134,6 +1134,7 @@ dependencies = [
  "log",
  "resvg",
  "serde",
+ "simplecss",
  "tiny-skia",
  "tl",
  "wasm-bindgen-futures",
