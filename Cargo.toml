@@ -21,6 +21,7 @@ eframe = { version = "0.28", default-features = false, features = [
 ] }
 log = "0.4"
 ndarray = { version = "0.16", features = ["serde"] }
+num-integer = "0.1"
 resvg = { version = "0.43", default-features = false }
 simplecss = "0.2"
 tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }

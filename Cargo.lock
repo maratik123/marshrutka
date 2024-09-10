@@ -1140,6 +1140,7 @@ dependencies = [
  "env_logger",
  "log",
  "ndarray",
+ "num-integer",
  "resvg",
  "serde",
  "simplecss",
