@@ -1,15 +1,11 @@
 use crate::cell::{Cell, CellElement};
 use crate::emoji::EmojiMap;
-use crate::grid::{CELL_SIZE, MAP_SIZE};
+use crate::grid::{MapGrid, CELL_SIZE, MAP_SIZE};
 use egui::load::BytesPoll;
-use egui::Key::V;
-use egui::{
-    Button, Color32, FontId, Frame, Grid, Label, ScrollArea, Style, TextStyle, Ui, Vec2, Visuals,
-};
+use egui::{Color32, FontId, Grid, ScrollArea, TextStyle, Vec2, Visuals};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
-use std::sync::{Arc, LazyLock};
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -17,6 +13,8 @@ pub struct MarshrutkaApp {
     #[serde(skip)]
     emojis: OnceCell<EmojiMap>,
     show_settings: bool,
+    #[serde(skip)]
+    grid: OnceCell<MapGrid>,
 }
 
 pub const FONT32: &str = "32";
@@ -109,7 +107,8 @@ impl eframe::App for MarshrutkaApp {
                 let s = match bytes {
                     Ok(BytesPoll::Pending { .. }) => {
                         ui.ctx().request_repaint();
-                        Cow::Borrowed("Loading...")
+                        ui.label("Loading...");
+                        return;
                     }
                     Ok(BytesPoll::Ready { bytes, .. }) => {
                         Cow::Owned(String::from_utf8_lossy(bytes.as_ref()).to_string())
@@ -123,7 +122,7 @@ impl eframe::App for MarshrutkaApp {
                 ScrollArea::both().show(ui, |ui| {
                     Grid::new("map_grid")
                         .striped(false)
-                        .spacing(Vec2::splat(1.0))
+                        .spacing(Vec2::splat(2.0))
                         .min_col_width(CELL_SIZE)
                         .min_row_height(CELL_SIZE)
                         .show(ui, |ui| {

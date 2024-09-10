@@ -1,9 +1,8 @@
 use crate::app::{FONT16, FONT32};
-use crate::emoji::{EmojiCode, EmojiData, EmojiMap};
+use crate::emoji::{EmojiCode, EmojiMap};
 use crate::grid::CELL_SIZE;
 use egui::{
-    Align2, Color32, Margin, Painter, Pos2, Rect, Rounding, Sense, TextStyle, TextureHandle, Ui,
-    Vec2,
+    Align2, Color32, Margin, Painter, Pos2, Rect, Sense, TextStyle, TextureHandle, Ui, Vec2,
 };
 
 pub enum CellElement {
@@ -30,9 +29,9 @@ struct DrawAttrs {
 impl Cell {
     pub fn ui_content(&self, ui: &mut Ui, emoji_map: &EmojiMap) {
         let (response, painter) = ui.allocate_painter(Vec2::splat(CELL_SIZE), Sense::click());
-        let rect = response.rect - Margin::same(9.0);
+        let rect = response.rect - Margin::same(8.0);
         if let Some(color32) = self.color32 {
-            painter.rect_filled(response.rect, Rounding::ZERO, color32);
+            painter.rect_filled(response.rect, 5.0, color32);
         }
 
         self.draw_element(
@@ -106,11 +105,8 @@ impl Cell {
                     None => {
                         self.draw_text(ui, painter, emoji_code, attrs);
                     }
-                    Some(EmojiData::EmojiTexture(texture)) => {
+                    Some(texture) => {
                         self.draw_emoji_image(painter, texture.get(attrs.large), attrs);
-                    }
-                    Some(EmojiData::Texture(_)) => {
-                        self.draw_text(ui, painter, emoji_code, attrs);
                     }
                 },
                 CellElement::Text(text) => {
@@ -145,15 +141,6 @@ impl Cell {
         painter.image(
             image.id(),
             image_rect,
-            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-            Color32::WHITE,
-        );
-    }
-
-    fn draw_image(&self, painter: &Painter, image: &TextureHandle, rect: Rect) {
-        painter.image(
-            image.id(),
-            rect,
             Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
             Color32::WHITE,
         );

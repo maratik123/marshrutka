@@ -7,20 +7,14 @@ use std::fmt::{Display, Formatter, Write};
 use tiny_skia::{IntSize, Pixmap};
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Ord, PartialOrd)]
-pub enum EmojiCode {
-    Chars { c0: char, c1: Option<char> },
-    Box,
+pub struct EmojiCode {
+    c0: char,
+    c1: Option<char>,
 }
 
 pub enum EmojiContent {
     Alias(EmojiCode),
     EmojiTexture(EmojiTexture),
-    Texture(TextureHandle),
-}
-
-pub enum EmojiData<'a> {
-    EmojiTexture(&'a EmojiTexture),
-    Texture(&'a TextureHandle),
 }
 
 pub struct EmojiTexture {
@@ -35,7 +29,7 @@ impl EmojiMap {
         Self(init_emojis(ctx))
     }
 
-    pub fn get_texture<'a>(&'a self, emoji_code: &'_ EmojiCode) -> Option<EmojiData<'a>> {
+    pub fn get_texture(&self, emoji_code: &EmojiCode) -> Option<&EmojiTexture> {
         let mut content = self.0.get(emoji_code)?;
         Some(loop {
             match content {
@@ -43,10 +37,7 @@ impl EmojiMap {
                     content = self.0.get(emoji_code)?;
                 }
                 EmojiContent::EmojiTexture(texture) => {
-                    break EmojiData::EmojiTexture(texture);
-                }
-                EmojiContent::Texture(texture) => {
-                    break EmojiData::Texture(texture);
+                    break texture;
                 }
             }
         })
@@ -164,7 +155,6 @@ fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiContent> {
         .into_iter()
         .map(|(from, to)| (from, to.into())),
     )
-    //  .chain(iter::once(EmojiCode::Box, EmojiContent::Texture(EmojiTexture)))
     .collect()
 }
 
@@ -182,28 +172,21 @@ impl From<EmojiTexture> for EmojiContent {
 
 impl From<char> for EmojiCode {
     fn from(c0: char) -> Self {
-        Self::Chars { c0, c1: None }
+        Self { c0, c1: None }
     }
 }
 
 impl From<(char, char)> for EmojiCode {
     fn from((c0, c1): (char, char)) -> Self {
-        Self::Chars { c0, c1: Some(c1) }
+        Self { c0, c1: Some(c1) }
     }
 }
 
 impl Display for EmojiCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            EmojiCode::Chars { c0, c1 } => {
-                f.write_char(*c0)?;
-                if let Some(c1) = c1 {
-                    f.write_char(*c1)?;
-                }
-            }
-            EmojiCode::Box => {
-                f.write_str("<Box>")?;
-            }
+        f.write_char(self.c0)?;
+        if let Some(c1) = self.c1 {
+            f.write_char(c1)?;
         }
         Ok(())
     }
