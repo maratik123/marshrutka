@@ -1,12 +1,10 @@
-use crate::cell::{Cell, CellElement};
 use crate::emoji::EmojiMap;
-use crate::grid::{MapGrid, CELL_SIZE};
+use crate::grid::MapGrid;
 use egui::load::BytesPoll;
-use egui::{Color32, FontId, Grid, ScrollArea, TextStyle, Vec2, Visuals};
+use egui::{FontId, ScrollArea, TextStyle, Visuals};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
-use std::os::unix::raw::gid_t;
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]

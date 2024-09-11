@@ -43,7 +43,14 @@ impl TryFrom<&str> for CellElement {
 }
 
 impl Cell {
-    pub fn ui_content(&self, ui: &mut Ui, emoji_map: &EmojiMap) {
+    pub fn ui_content(
+        &self,
+        ui: &mut Ui,
+        emoji_map: &EmojiMap,
+        #[allow(clippy::ptr_arg)] left: &mut String,
+        #[allow(clippy::ptr_arg)] right: &mut String,
+        mut cell_name: impl FnMut() -> String,
+    ) {
         let (response, painter) = ui.allocate_painter(Vec2::splat(CELL_SIZE), Sense::click());
         let rect = response.rect - Margin::same(8.0);
         if let Some(bg_color) = self.bg_color {
@@ -105,6 +112,12 @@ impl Cell {
                 rect,
             },
         );
+        if response.clicked() {
+            *left = cell_name();
+        }
+        if response.secondary_clicked() {
+            *right = cell_name();
+        }
     }
 
     fn draw_element(

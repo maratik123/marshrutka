@@ -6,7 +6,7 @@ use egui::{Color32, Grid, ScrollArea, Ui, Vec2};
 use num_integer::Roots;
 use simplecss::DeclarationTokenizer;
 use std::error::Error;
-use std::fmt::{Debug, Display, Formatter, Pointer};
+use std::fmt::{Debug, Display, Formatter};
 use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
 
 pub const CELL_SIZE: f32 = 88.0;
@@ -43,10 +43,10 @@ impl MapGrid {
                 .map(|map_cell| {
                     Ok(Cell {
                         bg_color: parse_bg_color_from_style(map_cell)?,
-                        top_left: parse_cell_element(map_cell, parser, &"top-left-text"),
-                        top_right: parse_cell_element(map_cell, parser, &"top-right-text"),
-                        bottom_left: parse_cell_element(map_cell, parser, &"bottom-left-text"),
-                        bottom_right: parse_cell_element(map_cell, parser, &"bottom-right-text"),
+                        top_left: parse_cell_element(map_cell, parser, "top-left-text"),
+                        top_right: parse_cell_element(map_cell, parser, "top-right-text"),
+                        bottom_left: parse_cell_element(map_cell, parser, "bottom-left-text"),
+                        bottom_right: parse_cell_element(map_cell, parser, "bottom-right-text"),
                         center: parse_text(map_cell, parser),
                     })
                 })
@@ -68,8 +68,8 @@ impl MapGrid {
         &self,
         ui: &mut Ui,
         emoji_map: &EmojiMap,
-        #[allow(clippy::ptr_arg)] _left: &mut String,
-        #[allow(clippy::ptr_arg)] _right: &mut String,
+        #[allow(clippy::ptr_arg)] left: &mut String,
+        #[allow(clippy::ptr_arg)] right: &mut String,
     ) {
         Grid::new("map_grid")
             .striped(false)
@@ -79,7 +79,7 @@ impl MapGrid {
             .show(ui, |ui| {
                 for (i, cell) in self.grid.iter().enumerate() {
                     ScrollArea::both().id_source(i).show(ui, |ui| {
-                        cell.ui_content(ui, emoji_map);
+                        cell.ui_content(ui, emoji_map, left, right, || self.i_to_name(i));
                     });
                     if (i + 1) % self.square_size == 0 {
                         ui.end_row();
@@ -129,13 +129,12 @@ fn parse_bg_color_from_style(html_tag: &HTMLTag) -> Result<Option<Color32>> {
         .attributes()
         .get("style")
         .flatten()
-        .map(|style| {
+        .and_then(|style| {
             let style = style.as_utf8_str();
             DeclarationTokenizer::from(style.as_ref())
                 .find(|v| v.name == "background-color")
-                .map(|v| Color32::from_hex(v.value).map_err(|e| ParseHexColorErrorWrapper(e)))
+                .map(|v| Color32::from_hex(v.value).map_err(ParseHexColorErrorWrapper))
         })
-        .flatten()
         .transpose()
         .map_err(|e| e.into())
 }

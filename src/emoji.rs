@@ -187,8 +187,8 @@ impl TryFrom<&[char]> for EmojiCode {
 
     fn try_from(value: &[char]) -> Result<Self, Self::Error> {
         Ok(match value {
-            &[c0] => c0.into(),
-            &[c0, c1] => (c0, c1).into(),
+            [c0] => (*c0).into(),
+            [c0, c1] => (*c0, *c1).into(),
             _ => Err(())?,
         })
     }
