@@ -1,4 +1,6 @@
-use crate::consts::{CELL_MARGIN, CELL_ROUNDING, CELL_SIZE, FONT_CENTER, FONT_CORNER};
+use crate::consts::{
+    BLEACH_ALPHA, CELL_MARGIN, CELL_ROUNDING, CELL_SIZE, FONT_CENTER, FONT_CORNER,
+};
 use crate::emoji::{EmojiCode, EmojiMap};
 use arrayvec::ArrayVec;
 use egui::{
@@ -25,6 +27,7 @@ struct DrawAttrs {
     align: Align2,
     large: bool,
     rect: Rect,
+    bleach: bool,
 }
 
 impl TryFrom<&str> for CellElement {
@@ -63,6 +66,7 @@ impl Cell {
                 align: Align2::CENTER_CENTER,
                 large: true,
                 rect,
+                bleach: true,
             },
         );
 
@@ -75,6 +79,7 @@ impl Cell {
                 align: Align2::LEFT_TOP,
                 large: false,
                 rect,
+                bleach: false,
             },
         );
         self.draw_element(
@@ -86,6 +91,7 @@ impl Cell {
                 align: Align2::RIGHT_TOP,
                 large: false,
                 rect,
+                bleach: false,
             },
         );
         self.draw_element(
@@ -97,6 +103,7 @@ impl Cell {
                 align: Align2::LEFT_BOTTOM,
                 large: false,
                 rect,
+                bleach: false,
             },
         );
         self.draw_element(
@@ -108,6 +115,7 @@ impl Cell {
                 align: Align2::RIGHT_BOTTOM,
                 large: false,
                 rect,
+                bleach: false,
             },
         );
         (
@@ -164,7 +172,12 @@ impl Cell {
                 .get(&TextStyle::Name(font_size.into()))
                 .unwrap()
                 .clone(),
-            Color32::from_rgb(0x2c, 0x3e, 0x50),
+            Color32::from_rgba_unmultiplied(
+                0x2c,
+                0x3e,
+                0x50,
+                if attrs.bleach { BLEACH_ALPHA } else { 255 },
+            ),
         );
     }
 
@@ -179,7 +192,12 @@ impl Cell {
             image.id(),
             image_rect,
             Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-            Color32::WHITE,
+            Color32::from_rgba_unmultiplied(
+                255,
+                255,
+                255,
+                if attrs.bleach { BLEACH_ALPHA } else { 255 },
+            ),
         );
     }
 }

@@ -27,7 +27,7 @@ simplecss = "0.2"
 tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
 tl = "0.7"
 
-# You only need serde if you want app persistence:
+# We need serde for app persistence:
 serde = { version = "1", features = ["derive"] }
 
 # native:
@@ -54,13 +54,3 @@ codegen-units = 1
 # Optimize all dependencies even in debug builds:
 [profile.dev.package."*"]
 opt-level = 2
-
-[patch.crates-io]
-
-# If you want to use the bleeding edge version of egui and eframe:
-# egui = { git = "https://github.com/emilk/egui", branch = "master" }
-# eframe = { git = "https://github.com/emilk/egui", branch = "master" }
-
-# If you fork https://github.com/emilk/egui you can test with:
-# egui = { path = "../egui/crates/egui" }
-# eframe = { path = "../egui/crates/eframe" }

@@ -26,4 +26,4 @@ We use [Trunk](https://trunkrs.dev/) to build for web target.
    project.
 4. Open `http://127.0.0.1:8080/index.html` in a browser.
 
-You can test this app at <https://maratik123.github.io/marshrutka/>.
+You can run the fresh version of this app at <https://maratik123.github.io/marshrutka/>.
