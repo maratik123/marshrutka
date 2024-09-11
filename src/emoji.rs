@@ -1,3 +1,6 @@
+use crate::consts::{
+    FONT_CENTER_SIZE_F, FONT_CENTER_SIZE_U, FONT_CORNER_SIZE_F, FONT_CORNER_SIZE_U,
+};
 use eframe::epaint::textures::TextureOptions;
 use eframe::epaint::{ColorImage, TextureHandle};
 use egui::Vec2;
@@ -18,8 +21,8 @@ pub enum EmojiContent {
 }
 
 pub struct EmojiTexture {
-    pub p32: TextureHandle,
-    pub p16: TextureHandle,
+    pub center: TextureHandle,
+    pub corner: TextureHandle,
 }
 
 pub struct EmojiMap(HashMap<EmojiCode, EmojiContent>);
@@ -50,9 +53,9 @@ impl EmojiMap {
 impl EmojiTexture {
     pub fn get(&self, large: bool) -> (&TextureHandle, Vec2) {
         if large {
-            (&self.p32, Vec2::splat(32.0))
+            (&self.center, Vec2::splat(FONT_CENTER_SIZE_F))
         } else {
-            (&self.p16, Vec2::splat(16.0))
+            (&self.corner, Vec2::splat(FONT_CORNER_SIZE_F))
         }
     }
 }
@@ -150,8 +153,8 @@ fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiContent> {
         (
             ch,
             EmojiTexture {
-                p32: svg_to_texture(ctx, 32),
-                p16: svg_to_texture(ctx, 16),
+                center: svg_to_texture(ctx, FONT_CENTER_SIZE_U),
+                corner: svg_to_texture(ctx, FONT_CORNER_SIZE_U),
             }
             .into(),
         )

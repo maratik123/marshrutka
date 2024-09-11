@@ -1,4 +1,5 @@
 use crate::cell::{Cell, CellElement};
+use crate::consts::{CELL_SIZE, GRID_SPACING};
 use crate::emoji::EmojiMap;
 use anyhow::{anyhow, Result};
 use egui::ecolor::ParseHexColorError;
@@ -8,8 +9,6 @@ use simplecss::DeclarationTokenizer;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
-
-pub const CELL_SIZE: f32 = 88.0;
 
 #[derive(Default)]
 pub struct MapGrid {
@@ -71,7 +70,7 @@ impl MapGrid {
     ) -> (Option<String>, Option<String>) {
         Grid::new("map_grid")
             .striped(false)
-            .spacing(Vec2::splat(2.0))
+            .spacing(Vec2::splat(GRID_SPACING))
             .min_col_width(CELL_SIZE)
             .min_row_height(CELL_SIZE)
             .show(ui, |ui| {

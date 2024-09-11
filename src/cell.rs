@@ -1,6 +1,5 @@
-use crate::app::{FONT16, FONT32};
+use crate::consts::{CELL_MARGIN, CELL_ROUNDING, CELL_SIZE, FONT_CENTER, FONT_CORNER};
 use crate::emoji::{EmojiCode, EmojiMap};
-use crate::grid::CELL_SIZE;
 use arrayvec::ArrayVec;
 use egui::{
     Align2, Color32, Margin, Painter, Pos2, Rect, Sense, TextStyle, TextureHandle, Ui, Vec2,
@@ -50,10 +49,22 @@ impl Cell {
         mut cell_name: impl FnMut() -> String,
     ) -> (Option<String>, Option<String>) {
         let (response, painter) = ui.allocate_painter(Vec2::splat(CELL_SIZE), Sense::click());
-        let rect = response.rect - Margin::same(8.0);
+        let rect = response.rect - Margin::same(CELL_MARGIN);
         if let Some(bg_color) = self.bg_color {
-            painter.rect_filled(response.rect, 5.0, bg_color);
+            painter.rect_filled(response.rect, CELL_ROUNDING, bg_color);
         }
+
+        self.draw_element(
+            ui,
+            &painter,
+            emoji_map,
+            &self.center,
+            DrawAttrs {
+                align: Align2::CENTER_CENTER,
+                large: true,
+                rect,
+            },
+        );
 
         self.draw_element(
             ui,
@@ -99,17 +110,6 @@ impl Cell {
                 rect,
             },
         );
-        self.draw_element(
-            ui,
-            &painter,
-            emoji_map,
-            &self.center,
-            DrawAttrs {
-                align: Align2::CENTER_CENTER,
-                large: true,
-                rect,
-            },
-        );
         (
             if response.clicked() {
                 Some(cell_name())
@@ -150,7 +150,11 @@ impl Cell {
     }
 
     fn draw_text(&self, ui: &Ui, painter: &Painter, text: impl ToString, attrs: DrawAttrs) {
-        let font_size = if attrs.large { FONT32 } else { FONT16 };
+        let font_size = if attrs.large {
+            FONT_CENTER
+        } else {
+            FONT_CORNER
+        };
         painter.text(
             attrs.align.pos_in_rect(&attrs.rect),
             attrs.align,

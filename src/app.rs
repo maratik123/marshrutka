@@ -1,3 +1,4 @@
+use crate::consts::{FONT_CENTER, FONT_CENTER_SIZE_F, FONT_CORNER, FONT_CORNER_SIZE_F};
 use crate::emoji::EmojiMap;
 use crate::grid::MapGrid;
 use egui::load::BytesPoll;
@@ -18,9 +19,6 @@ pub struct MarshrutkaApp {
     to: String,
 }
 
-pub const FONT32: &str = "32";
-pub const FONT16: &str = "16";
-
 impl MarshrutkaApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
@@ -39,12 +37,12 @@ impl MarshrutkaApp {
         let mut styles = (*cc.egui_ctx.style()).clone();
 
         styles.text_styles.insert(
-            TextStyle::Name(FONT32.into()),
-            FontId::new(32.0, body_font_family.clone()),
+            TextStyle::Name(FONT_CENTER.into()),
+            FontId::new(FONT_CENTER_SIZE_F, body_font_family.clone()),
         );
         styles.text_styles.insert(
-            TextStyle::Name(FONT16.into()),
-            FontId::new(16.0, body_font_family),
+            TextStyle::Name(FONT_CORNER.into()),
+            FontId::new(FONT_CORNER_SIZE_F, body_font_family),
         );
         styles.visuals = Visuals::dark();
         cc.egui_ctx.set_style(styles);
