@@ -182,6 +182,18 @@ impl From<(char, char)> for EmojiCode {
     }
 }
 
+impl TryFrom<&[char]> for EmojiCode {
+    type Error = ();
+
+    fn try_from(value: &[char]) -> Result<Self, Self::Error> {
+        Ok(match value {
+            &[c0] => c0.into(),
+            &[c0, c1] => (c0, c1).into(),
+            _ => Err(())?,
+        })
+    }
+}
+
 impl Display for EmojiCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_char(self.c0)?;

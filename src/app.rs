@@ -1,11 +1,12 @@
 use crate::cell::{Cell, CellElement};
 use crate::emoji::EmojiMap;
-use crate::grid::{MapGrid, CELL_SIZE, MAP_SIZE};
+use crate::grid::{MapGrid, CELL_SIZE};
 use egui::load::BytesPoll;
 use egui::{Color32, FontId, Grid, ScrollArea, TextStyle, Vec2, Visuals};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
+use std::os::unix::raw::gid_t;
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -119,33 +120,18 @@ impl eframe::App for MarshrutkaApp {
                     ))),
                 };
 
-                ScrollArea::both().show(ui, |ui| {
-                    Grid::new("map_grid")
-                        .striped(false)
-                        .spacing(Vec2::splat(2.0))
-                        .min_col_width(CELL_SIZE)
-                        .min_row_height(CELL_SIZE)
-                        .show(ui, |ui| {
-                            for i in 0..MAP_SIZE {
-                                for j in 0..MAP_SIZE {
-                                    ScrollArea::both().id_source((i, j)).show(ui, |ui| {
-                                        Cell {
-                                            color32: Some(Color32::from_additive_luminance(10)),
-                                            top_left: Some(CellElement::Text("TL".to_string())),
-                                            top_right: Some(CellElement::Emoji(
-                                                ('\u{26fa}', '\u{fe0f}').into(),
-                                            )),
-                                            bottom_left: Some(CellElement::Text("BL".to_string())),
-                                            bottom_right: Some(CellElement::Text("BR".to_string())),
-                                            center: Some(CellElement::Emoji('\u{1f33e}'.into())),
-                                        }
-                                        .ui_content(ui, self.emojis(ui.ctx()));
-                                    });
-                                }
-                                ui.end_row();
-                            }
+                match MapGrid::parse(s.as_ref()) {
+                    Ok(grid) => {
+                        ScrollArea::both().show(ui, |ui| {
+                            let mut l = String::new();
+                            let mut r = String::new();
+                            grid.ui_content(ui, self.emojis(ui.ctx()), &mut l, &mut r);
                         });
-                });
+                    }
+                    Err(e) => {
+                        ui.label(format!("Invalid map: {e}"));
+                    }
+                }
             }
         });
     }

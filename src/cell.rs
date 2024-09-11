@@ -1,9 +1,11 @@
 use crate::app::{FONT16, FONT32};
 use crate::emoji::{EmojiCode, EmojiMap};
 use crate::grid::CELL_SIZE;
+use arrayvec::ArrayVec;
 use egui::{
     Align2, Color32, Margin, Painter, Pos2, Rect, Sense, TextStyle, TextureHandle, Ui, Vec2,
 };
+use std::fmt::{Display, Formatter};
 
 pub enum CellElement {
     Text(String),
@@ -12,7 +14,7 @@ pub enum CellElement {
 
 #[derive(Default)]
 pub struct Cell {
-    pub color32: Option<Color32>,
+    pub bg_color: Option<Color32>,
     pub top_left: Option<CellElement>,
     pub top_right: Option<CellElement>,
     pub bottom_left: Option<CellElement>,
@@ -26,12 +28,26 @@ struct DrawAttrs {
     rect: Rect,
 }
 
+impl TryFrom<&str> for CellElement {
+    type Error = ();
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        if s.is_empty() {
+            return Err(());
+        }
+        let emoji: ArrayVec<_, 3> = s.chars().take(3).collect();
+        Ok(EmojiCode::try_from(emoji.as_ref())
+            .map(Self::Emoji)
+            .unwrap_or_else(|_| Self::Text(s.to_string())))
+    }
+}
+
 impl Cell {
     pub fn ui_content(&self, ui: &mut Ui, emoji_map: &EmojiMap) {
         let (response, painter) = ui.allocate_painter(Vec2::splat(CELL_SIZE), Sense::click());
         let rect = response.rect - Margin::same(8.0);
-        if let Some(color32) = self.color32 {
-            painter.rect_filled(response.rect, 5.0, color32);
+        if let Some(bg_color) = self.bg_color {
+            painter.rect_filled(response.rect, 5.0, bg_color);
         }
 
         self.draw_element(
@@ -127,7 +143,7 @@ impl Cell {
                 .get(&TextStyle::Name(font_size.into()))
                 .unwrap()
                 .clone(),
-            ui.visuals().text_color(),
+            Color32::from_rgb(0x2c, 0x3e, 0x50),
         );
     }
 
@@ -144,5 +160,26 @@ impl Cell {
             Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
             Color32::WHITE,
         );
+    }
+}
+
+impl From<String> for CellElement {
+    fn from(text: String) -> Self {
+        CellElement::Text(text)
+    }
+}
+
+impl From<EmojiCode> for CellElement {
+    fn from(emoji_code: EmojiCode) -> Self {
+        CellElement::Emoji(emoji_code)
+    }
+}
+
+impl Display for CellElement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CellElement::Text(text) => text.fmt(f),
+            CellElement::Emoji(emoji_code) => emoji_code.fmt(f),
+        }
     }
 }
