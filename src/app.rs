@@ -1,8 +1,9 @@
 use crate::consts::{FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE};
 use crate::emoji::EmojiMap;
 use crate::grid::MapGrid;
+use eframe::emath::Align;
 use egui::load::BytesPoll;
-use egui::{FontId, ScrollArea, TextStyle, Visuals};
+use egui::{FontId, Layout, ScrollArea, TextStyle, Visuals};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
@@ -13,6 +14,7 @@ pub struct MarshrutkaApp {
     #[serde(skip)]
     emojis: OnceCell<EmojiMap>,
     show_settings: bool,
+    show_about: bool,
     #[serde(skip)]
     grid: OnceCell<MapGrid>,
     from: String,
@@ -72,8 +74,28 @@ impl MarshrutkaApp {
                         }
                     }
                 });
+                if ui.button("About").clicked() {
+                    self.show_about ^= true;
+                }
             });
         });
+    }
+
+    fn about(&mut self, ctx: &egui::Context) {
+        egui::Window::new("About")
+            .open(&mut self.show_about)
+            .show(ctx, |ui| {
+                ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                    ui.heading("Marshrutka");
+                    if cfg!(debug_assertions) {
+                        egui::warn_if_debug_build(ui);
+                    }
+                    ui.hyperlink_to(
+                        "Support and source code",
+                        "https://github.com/maratik123/marshrutka",
+                    );
+                });
+            });
     }
 }
 
@@ -88,11 +110,7 @@ impl eframe::App for MarshrutkaApp {
                 ui.heading("Settings");
             });
 
-        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                bottom_frame(ui);
-            });
-        });
+        self.about(ctx);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
@@ -143,28 +161,4 @@ impl eframe::App for MarshrutkaApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
-}
-
-fn bottom_frame(ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 0.0;
-            ui.label("Powered by ");
-            ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-            ui.label(" and ");
-            ui.hyperlink_to(
-                "eframe",
-                "https://github.com/emilk/egui/tree/master/crates/eframe",
-            );
-            ui.label(".");
-        });
-        if cfg!(debug_assertions) {
-            ui.separator();
-            egui::warn_if_debug_build(ui);
-        }
-        ui.separator();
-        ui.spacing_mut().item_spacing.x = 0.0;
-        ui.hyperlink_to("Source code", "https://github.com/maratik123/marshrutka");
-        ui.label(".");
-    });
 }
