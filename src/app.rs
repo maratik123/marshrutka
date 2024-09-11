@@ -1,4 +1,4 @@
-use crate::consts::{FONT_CENTER, FONT_CENTER_SIZE_F, FONT_CORNER, FONT_CORNER_SIZE_F};
+use crate::consts::{FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE};
 use crate::emoji::EmojiMap;
 use crate::grid::MapGrid;
 use egui::load::BytesPoll;
@@ -38,11 +38,11 @@ impl MarshrutkaApp {
 
         styles.text_styles.insert(
             TextStyle::Name(FONT_CENTER.into()),
-            FontId::new(FONT_CENTER_SIZE_F, body_font_family.clone()),
+            FontId::new(FONT_CENTER_SIZE, body_font_family.clone()),
         );
         styles.text_styles.insert(
             TextStyle::Name(FONT_CORNER.into()),
-            FontId::new(FONT_CORNER_SIZE_F, body_font_family),
+            FontId::new(FONT_CORNER_SIZE, body_font_family),
         );
         styles.visuals = Visuals::dark();
         cc.egui_ctx.set_style(styles);

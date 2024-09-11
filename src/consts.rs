@@ -1,10 +1,9 @@
 pub const FONT_CENTER: &str = "center";
-pub const FONT_CENTER_SIZE_F: f32 = 32.0;
-pub const FONT_CENTER_SIZE_U: u32 = 32;
+pub const FONT_CENTER_SIZE: f32 = 32.0;
 
 pub const FONT_CORNER: &str = "corner";
-pub const FONT_CORNER_SIZE_F: f32 = 12.0;
-pub const FONT_CORNER_SIZE_U: u32 = 12;
+pub const FONT_CORNER_SIZE: f32 = 12.0;
+pub const EMOJI_CORNER_SIZE: f32 = 16.0;
 
 pub const GRID_SPACING: f32 = 2.0;
 
