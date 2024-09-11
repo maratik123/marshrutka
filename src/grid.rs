@@ -68,24 +68,33 @@ impl MapGrid {
         &self,
         ui: &mut Ui,
         emoji_map: &EmojiMap,
-        #[allow(clippy::ptr_arg)] left: &mut String,
-        #[allow(clippy::ptr_arg)] right: &mut String,
-    ) {
+    ) -> (Option<String>, Option<String>) {
         Grid::new("map_grid")
             .striped(false)
             .spacing(Vec2::splat(2.0))
             .min_col_width(CELL_SIZE)
             .min_row_height(CELL_SIZE)
             .show(ui, |ui| {
+                let mut left = None;
+                let mut right = None;
                 for (i, cell) in self.grid.iter().enumerate() {
                     ScrollArea::both().id_source(i).show(ui, |ui| {
-                        cell.ui_content(ui, emoji_map, left, right, || self.i_to_name(i));
+                        let (new_left, new_right) =
+                            cell.ui_content(ui, emoji_map, || self.i_to_name(i));
+                        if new_left.is_some() {
+                            left = new_left;
+                        }
+                        if new_right.is_some() {
+                            right = new_right;
+                        }
                     });
                     if (i + 1) % self.square_size == 0 {
                         ui.end_row();
                     }
                 }
-            });
+                (left, right)
+            })
+            .inner
     }
 }
 

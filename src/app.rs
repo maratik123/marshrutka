@@ -14,6 +14,8 @@ pub struct MarshrutkaApp {
     show_settings: bool,
     #[serde(skip)]
     grid: OnceCell<MapGrid>,
+    from: String,
+    to: String,
 }
 
 pub const FONT32: &str = "32";
@@ -97,6 +99,7 @@ impl eframe::App for MarshrutkaApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
             ui.heading("Marshrutka");
+            ui.label(format!("From '{}' to '{}'", self.from, self.to));
 
             let bytes = ui
                 .ctx()
@@ -120,11 +123,15 @@ impl eframe::App for MarshrutkaApp {
 
                 match MapGrid::parse(s.as_ref()) {
                     Ok(grid) => {
-                        ScrollArea::both().show(ui, |ui| {
-                            let mut l = String::new();
-                            let mut r = String::new();
-                            grid.ui_content(ui, self.emojis(ui.ctx()), &mut l, &mut r);
-                        });
+                        let (from, to) = ScrollArea::both()
+                            .show(ui, |ui| grid.ui_content(ui, self.emojis(ui.ctx())))
+                            .inner;
+                        if let Some(from) = from {
+                            self.from = from;
+                        }
+                        if let Some(to) = to {
+                            self.to = to;
+                        }
                     }
                     Err(e) => {
                         ui.label(format!("Invalid map: {e}"));

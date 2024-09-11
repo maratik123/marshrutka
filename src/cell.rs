@@ -47,10 +47,8 @@ impl Cell {
         &self,
         ui: &mut Ui,
         emoji_map: &EmojiMap,
-        #[allow(clippy::ptr_arg)] left: &mut String,
-        #[allow(clippy::ptr_arg)] right: &mut String,
         mut cell_name: impl FnMut() -> String,
-    ) {
+    ) -> (Option<String>, Option<String>) {
         let (response, painter) = ui.allocate_painter(Vec2::splat(CELL_SIZE), Sense::click());
         let rect = response.rect - Margin::same(8.0);
         if let Some(bg_color) = self.bg_color {
@@ -112,12 +110,18 @@ impl Cell {
                 rect,
             },
         );
-        if response.clicked() {
-            *left = cell_name();
-        }
-        if response.secondary_clicked() {
-            *right = cell_name();
-        }
+        (
+            if response.clicked() {
+                Some(cell_name())
+            } else {
+                None
+            },
+            if response.secondary_clicked() {
+                Some(cell_name())
+            } else {
+                None
+            },
+        )
     }
 
     fn draw_element(
