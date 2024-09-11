@@ -31,6 +31,7 @@ impl EmojiMap {
 
     pub fn get_texture(&self, emoji_code: &EmojiCode) -> Option<&EmojiTexture> {
         let mut content = self.0.get(emoji_code)?;
+        let mut guard = 0usize;
         Some(loop {
             match content {
                 EmojiContent::Alias(emoji_code) => {
@@ -40,6 +41,8 @@ impl EmojiMap {
                     break texture;
                 }
             }
+            guard += 1;
+            assert!(guard <= 16, "infinity loop in aliases unrolling");
         })
     }
 }
@@ -88,9 +91,21 @@ macro_rules! char_to_emoji_map {
     }
 }
 
+macro_rules! aliases_to_chars_map {
+    [$(($alias:expr, $ch:expr)),* $(,)?] => {
+        [$((
+            EmojiCode::from($alias),
+            EmojiCode::from($ch)
+        )),*]
+    }
+}
+
 fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiContent> {
-    // content
     char_to_emoji_map![
+        (('\u{1f1ea}', '\u{1f1fa}'), "emoji_u1f1ea_1f1fa.svg"),
+        (('\u{1f1ee}', '\u{1f1f2}'), "emoji_u1f1ee_1f1f2.svg"),
+        (('\u{1f1f2}', '\u{1f1f4}'), "emoji_u1f1f2_1f1f4.svg"),
+        (('\u{1f1fb}', '\u{1f1e6}'), "emoji_u1f1fb_1f1e6.svg"),
         ('\u{1f332}', "emoji_u1f332.svg"),
         ('\u{1f333}', "emoji_u1f333.svg"),
         ('\u{1f33b}', "emoji_u1f33b.svg"),
@@ -122,6 +137,7 @@ fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiContent> {
         ('\u{1f9f1}', "emoji_u1f9f1.svg"),
         ('\u{1faa8}', "emoji_u1faa8.svg"),
         ('\u{1fab5}', "emoji_u1fab5.svg"),
+        ('\u{2694}', "emoji_u2694.svg"),
         ('\u{26f2}', "emoji_u26f2.svg"),
         ('\u{26fa}', "emoji_u26fa.svg"),
         ('\u{2728}', "emoji_u2728.svg"),
@@ -141,16 +157,11 @@ fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiContent> {
         )
     })
     .chain(
-        // aliases
-        [
-            (
-                EmojiCode::from(('\u{26fa}', '\u{fe0f}')),
-                EmojiCode::from('\u{26fa}'),
-            ),
-            (
-                EmojiCode::from(('\u{26f2}', '\u{fe0f}')),
-                EmojiCode::from('\u{26f2}'),
-            ),
+        aliases_to_chars_map![
+            (('\u{1f6e1}', '\u{fe0f}'), '\u{1f6e1}'),
+            (('\u{2694}', '\u{fe0f}'), '\u{2694}'),
+            (('\u{26fa}', '\u{fe0f}'), '\u{26fa}'),
+            (('\u{26f2}', '\u{fe0f}'), '\u{26f2}'),
         ]
         .into_iter()
         .map(|(from, to)| (from, to.into())),
