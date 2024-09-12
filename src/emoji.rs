@@ -4,13 +4,13 @@ use eframe::epaint::{ColorImage, TextureHandle};
 use egui::Vec2;
 use resvg::usvg::{Options, Transform, Tree};
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter, Write};
+use std::fmt::{Display, Formatter};
 use tiny_skia::{IntSize, Pixmap};
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Ord, PartialOrd)]
 pub struct EmojiCode {
-    c0: char,
-    c1: Option<char>,
+    pub c0: char,
+    pub c1: Option<char>,
 }
 
 pub enum EmojiContent {
@@ -208,9 +208,9 @@ impl TryFrom<&[char]> for EmojiCode {
 
 impl Display for EmojiCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_char(self.c0)?;
+        <char as Display>::fmt(&self.c0, f)?;
         if let Some(c1) = self.c1 {
-            f.write_char(c1)?;
+            <char as Display>::fmt(&c1, f)?;
         }
         Ok(())
     }

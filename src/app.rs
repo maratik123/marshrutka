@@ -1,9 +1,11 @@
 use crate::consts::{FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE};
 use crate::emoji::EmojiMap;
 use crate::grid::MapGrid;
+use crate::homeland::Homeland;
 use eframe::emath::Align;
 use egui::load::BytesPoll;
-use egui::{FontId, Layout, ScrollArea, TextStyle, Visuals};
+use egui::Key::H;
+use egui::{FontId, Layout, ScrollArea, TextBuffer, TextStyle, Visuals};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
@@ -19,6 +21,7 @@ pub struct MarshrutkaApp {
     grid: OnceCell<MapGrid>,
     from: String,
     to: String,
+    homeland: Homeland,
 }
 
 impl MarshrutkaApp {
@@ -97,6 +100,35 @@ impl MarshrutkaApp {
                 });
             });
     }
+
+    fn settings(&mut self, ctx: &egui::Context) {
+        egui::Window::new("Settings")
+            .open(&mut self.show_settings)
+            .show(ctx, |ui| {
+                egui::Grid::new("Settings")
+                    .num_columns(2)
+                    .spacing([40.0, 4.0])
+                    .striped(true)
+                    .show(ui, |ui| {
+                        egui::ComboBox::from_label("Select your homeland")
+                            .selected_text(self.homeland.as_str())
+                            .show_ui(ui, |ui| {
+                                for homeland in [
+                                    Homeland::Blue,
+                                    Homeland::Red,
+                                    Homeland::Green,
+                                    Homeland::Yellow,
+                                ] {
+                                    ui.selectable_value(
+                                        &mut self.homeland,
+                                        homeland,
+                                        homeland.as_str(),
+                                    );
+                                }
+                            })
+                    })
+            });
+    }
 }
 
 impl eframe::App for MarshrutkaApp {
@@ -104,12 +136,7 @@ impl eframe::App for MarshrutkaApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.top_menu(ctx);
 
-        egui::Window::new("Settings")
-            .open(&mut self.show_settings)
-            .show(ctx, |ui| {
-                ui.heading("Settings");
-            });
-
+        self.settings(ctx);
         self.about(ctx);
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -122,15 +149,13 @@ impl eframe::App for MarshrutkaApp {
                 .try_load_bytes("https://api.chatwars.me/webview/map");
 
             {
-                let s = match bytes {
+                let s = match &bytes {
                     Ok(BytesPoll::Pending { .. }) => {
                         ui.ctx().request_repaint();
                         ui.label("Loading...");
                         return;
                     }
-                    Ok(BytesPoll::Ready { bytes, .. }) => {
-                        Cow::Owned(String::from_utf8_lossy(bytes.as_ref()).to_string())
-                    }
+                    Ok(BytesPoll::Ready { bytes, .. }) => String::from_utf8_lossy(bytes),
                     Err(_) => Cow::Borrowed(include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
                         "/Map.html"

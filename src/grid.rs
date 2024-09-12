@@ -35,22 +35,20 @@ impl MapGrid {
         if square_size * square_size != map_cells.len() {
             return Err(anyhow!("Map grid is not square: {}", map_cells.len()));
         }
-        Ok(Self {
-            square_size,
-            grid: map_cells
-                .into_iter()
-                .map(|map_cell| {
-                    Ok(Cell {
-                        bg_color: parse_bg_color_from_style(map_cell)?,
-                        top_left: parse_cell_element(map_cell, parser, "top-left-text"),
-                        top_right: parse_cell_element(map_cell, parser, "top-right-text"),
-                        bottom_left: parse_cell_element(map_cell, parser, "bottom-left-text"),
-                        bottom_right: parse_cell_element(map_cell, parser, "bottom-right-text"),
-                        center: parse_text(map_cell, parser),
-                    })
+        let grid = map_cells
+            .into_iter()
+            .map(|map_cell| {
+                Ok(Cell {
+                    bg_color: parse_bg_color_from_style(map_cell)?,
+                    top_left: parse_cell_element(map_cell, parser, "top-left-text"),
+                    top_right: parse_cell_element(map_cell, parser, "top-right-text"),
+                    bottom_left: parse_cell_element(map_cell, parser, "bottom-left-text"),
+                    bottom_right: parse_cell_element(map_cell, parser, "bottom-right-text"),
+                    center: parse_text(map_cell, parser),
                 })
-                .collect::<Result<_>>()?,
-        })
+            })
+            .collect::<Result<_>>()?;
+        Ok(Self { square_size, grid })
     }
 
     fn i_to_name(&self, i: usize) -> String {
