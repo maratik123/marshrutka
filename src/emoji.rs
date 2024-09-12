@@ -8,22 +8,15 @@ use std::fmt::{Display, Formatter};
 use tiny_skia::{IntSize, Pixmap};
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Ord, PartialOrd)]
-pub struct EmojiCode {
-    pub c0: char,
-    pub c1: Option<char>,
-}
+pub struct EmojiCode(pub char, pub Option<char>);
 
-pub enum EmojiContent {
-    Alias(EmojiCode),
-    EmojiTexture(EmojiTexture),
-}
-
+#[derive(Clone)]
 pub struct EmojiTexture {
     pub center: TextureHandle,
     pub corner: TextureHandle,
 }
 
-pub struct EmojiMap(HashMap<EmojiCode, EmojiContent>);
+pub struct EmojiMap(HashMap<EmojiCode, EmojiTexture>);
 
 impl EmojiMap {
     pub fn new(ctx: &egui::Context) -> Self {
@@ -31,20 +24,7 @@ impl EmojiMap {
     }
 
     pub fn get_texture(&self, emoji_code: &EmojiCode) -> Option<&EmojiTexture> {
-        let mut content = self.0.get(emoji_code)?;
-        let mut guard = 0usize;
-        Some(loop {
-            match content {
-                EmojiContent::Alias(emoji_code) => {
-                    content = self.0.get(emoji_code)?;
-                }
-                EmojiContent::EmojiTexture(texture) => {
-                    break texture;
-                }
-            }
-            guard += 1;
-            assert!(guard <= 16, "infinity loop in aliases unrolling");
-        })
+        self.0.get(emoji_code)
     }
 }
 
@@ -101,8 +81,8 @@ macro_rules! aliases_to_chars_map {
     }
 }
 
-fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiContent> {
-    char_to_emoji_map![
+fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiTexture> {
+    let mut map: HashMap<_, _> = char_to_emoji_map![
         (('\u{1f1ea}', '\u{1f1fa}'), "emoji_u1f1ea_1f1fa.svg"),
         (('\u{1f1ee}', '\u{1f1f2}'), "emoji_u1f1ee_1f1f2.svg"),
         (('\u{1f1f2}', '\u{1f1f4}'), "emoji_u1f1f2_1f1f4.svg"),
@@ -153,44 +133,32 @@ fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiContent> {
             EmojiTexture {
                 center: svg_to_texture(ctx, FONT_CENTER_SIZE as _),
                 corner: svg_to_texture(ctx, EMOJI_CORNER_SIZE as _),
-            }
-            .into(),
+            },
         )
     })
-    .chain(
-        aliases_to_chars_map![
-            (('\u{1f6e1}', '\u{fe0f}'), '\u{1f6e1}'),
-            (('\u{2694}', '\u{fe0f}'), '\u{2694}'),
-            (('\u{26fa}', '\u{fe0f}'), '\u{26fa}'),
-            (('\u{26f2}', '\u{fe0f}'), '\u{26f2}'),
-        ]
-        .into_iter()
-        .map(|(from, to)| (from, to.into())),
-    )
-    .collect()
-}
+    .collect();
 
-impl From<EmojiCode> for EmojiContent {
-    fn from(emoji_code: EmojiCode) -> Self {
-        Self::Alias(emoji_code)
-    }
-}
+    let aliases = aliases_to_chars_map![
+        (('\u{1f6e1}', '\u{fe0f}'), '\u{1f6e1}'),
+        (('\u{2694}', '\u{fe0f}'), '\u{2694}'),
+        (('\u{26fa}', '\u{fe0f}'), '\u{26fa}'),
+        (('\u{26f2}', '\u{fe0f}'), '\u{26f2}'),
+    ]
+    .map(|(from, to)| (from, map.get(&to).unwrap().clone()));
+    map.extend(aliases);
 
-impl From<EmojiTexture> for EmojiContent {
-    fn from(emoji_texture: EmojiTexture) -> Self {
-        Self::EmojiTexture(emoji_texture)
-    }
+    map
 }
 
 impl From<char> for EmojiCode {
     fn from(c0: char) -> Self {
-        Self { c0, c1: None }
+        Self(c0, None)
     }
 }
 
 impl From<(char, char)> for EmojiCode {
     fn from((c0, c1): (char, char)) -> Self {
-        Self { c0, c1: Some(c1) }
+        Self(c0, Some(c1))
     }
 }
 
@@ -208,8 +176,8 @@ impl TryFrom<&[char]> for EmojiCode {
 
 impl Display for EmojiCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        <char as Display>::fmt(&self.c0, f)?;
-        if let Some(c1) = self.c1 {
+        <char as Display>::fmt(&self.0, f)?;
+        if let Some(c1) = self.1 {
             <char as Display>::fmt(&c1, f)?;
         }
         Ok(())
@@ -219,6 +187,7 @@ impl Display for EmojiCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use egui::Context;
 
     #[test]
     fn emoji_code_2_display() {
@@ -232,5 +201,19 @@ mod tests {
         let emoji_code = EmojiCode::from('\u{26f2}');
         let emoji_str = emoji_code.to_string();
         assert_eq!(emoji_str, "\u{26f2}");
+    }
+
+    #[test]
+    fn init_emojis_get() {
+        let ctx = Context::default();
+        let emojis = init_emojis(&ctx);
+        assert_eq!(
+            emojis
+                .get(&('\u{1f6e1}', '\u{fe0f}').into())
+                .unwrap()
+                .center
+                .id(),
+            emojis.get(&'\u{1f6e1}'.into()).unwrap().center.id()
+        );
     }
 }

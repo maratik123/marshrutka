@@ -27,27 +27,26 @@ impl TryFrom<EmojiCode> for Homeland {
 
     fn try_from(value: EmojiCode) -> Result<Self, Self::Error> {
         Ok(match value {
-            EmojiCode {
-                c0: '\u{1f1ea}',
-                c1: Some('\u{1f1fa}'),
-            } => Homeland::Blue,
-            EmojiCode {
-                c0: '\u{1f1ee}',
-                c1: Some('\u{1f1f2}'),
-            } => Homeland::Red,
-            EmojiCode {
-                c0: '\u{1f1f2}',
-                c1: Some('\u{1f1f4}'),
-            } => Homeland::Green,
-            EmojiCode {
-                c0: '\u{1f1fb}',
-                c1: Some('\u{1f1e6}'),
-            } => Homeland::Yellow,
+            EmojiCode('\u{1f1ea}', Some('\u{1f1fa}')) => Homeland::Blue,
+            EmojiCode('\u{1f1ee}', Some('\u{1f1f2}')) => Homeland::Red,
+            EmojiCode('\u{1f1f2}', Some('\u{1f1f4}')) => Homeland::Green,
+            EmojiCode('\u{1f1fb}', Some('\u{1f1e6}')) => Homeland::Yellow,
             _ => return Err(()),
         })
     }
 }
 
+impl From<Homeland> for EmojiCode {
+    fn from(value: Homeland) -> Self {
+        match value {
+            Homeland::Blue => ('\u{1f1ea}', '\u{1f1fa}'),
+            Homeland::Red => ('\u{1f1ee}', '\u{1f1f2}'),
+            Homeland::Green => ('\u{1f1f2}', '\u{1f1f4}'),
+            Homeland::Yellow => ('\u{1f1fb}', '\u{1f1e6}'),
+        }
+        .into()
+    }
+}
 impl Display for Homeland {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.as_str().fmt(f)
