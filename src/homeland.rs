@@ -36,6 +36,12 @@ impl TryFrom<EmojiCode> for Homeland {
     }
 }
 
+impl From<&Homeland> for EmojiCode {
+    fn from(value: &Homeland) -> Self {
+        (*value).into()
+    }
+}
+
 impl From<Homeland> for EmojiCode {
     fn from(value: Homeland) -> Self {
         match value {

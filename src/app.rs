@@ -4,7 +4,7 @@ use crate::grid::MapGrid;
 use crate::homeland::Homeland;
 use eframe::emath::Align;
 use egui::load::BytesPoll;
-use egui::{FontId, Layout, ScrollArea, TextStyle, Visuals};
+use egui::{FontId, Image, ImageButton, Layout, ScrollArea, TextStyle, Visuals, Widget};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
@@ -21,6 +21,8 @@ pub struct MarshrutkaApp {
     from: String,
     to: String,
     homeland: Homeland,
+    #[serde(skip)]
+    need_to_save: bool,
 }
 
 impl MarshrutkaApp {
@@ -65,6 +67,7 @@ impl MarshrutkaApp {
                 ui.menu_button("File", |ui| {
                     if ui.button("Settings").clicked() {
                         self.show_settings ^= true;
+                        self.need_to_save = true;
                         ui.close_menu();
                     }
                     // NOTE: no File->Quit on web pages
@@ -78,6 +81,15 @@ impl MarshrutkaApp {
                 });
                 if ui.button("About").clicked() {
                     self.show_about ^= true;
+                    self.need_to_save = true;
+                }
+                ui.separator();
+                ui.label("Your homeland: ");
+                let emoji_code = &self.homeland.into();
+                if let Some(flag) = self.emojis(ctx).get_texture(emoji_code) {
+                    if ImageButton::new(Image::new(&flag.corner)).ui(ui).clicked() {
+                        self.show_settings = true;
+                    }
                 }
             });
         });
@@ -118,11 +130,16 @@ impl MarshrutkaApp {
                                     Homeland::Green,
                                     Homeland::Yellow,
                                 ] {
-                                    ui.selectable_value(
-                                        &mut self.homeland,
-                                        homeland,
-                                        homeland.as_str(),
-                                    );
+                                    if ui
+                                        .selectable_value(
+                                            &mut self.homeland,
+                                            homeland,
+                                            homeland.as_str(),
+                                        )
+                                        .changed()
+                                    {
+                                        self.need_to_save = true;
+                                    }
                                 }
                             })
                     })
@@ -132,7 +149,7 @@ impl MarshrutkaApp {
 
 impl eframe::App for MarshrutkaApp {
     /// Called each time the UI needs repainting, which may be many times per second.
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.top_menu(ctx);
 
         self.settings(ctx);
@@ -168,9 +185,11 @@ impl eframe::App for MarshrutkaApp {
                             .inner;
                         if let Some(from) = from {
                             self.from = from;
+                            self.need_to_save = true;
                         }
                         if let Some(to) = to {
                             self.to = to;
+                            self.need_to_save = true;
                         }
                     }
                     Err(e) => {
@@ -179,6 +198,13 @@ impl eframe::App for MarshrutkaApp {
                 }
             }
         });
+
+        if self.need_to_save {
+            if let Some(storage) = frame.storage_mut() {
+                self.save(storage);
+            }
+            self.need_to_save = false;
+        }
     }
 
     /// Called by the framework to save state before shutdown.
