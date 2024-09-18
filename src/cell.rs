@@ -2,18 +2,21 @@ use crate::consts::{
     BLEACH_ALPHA, CELL_MARGIN, CELL_ROUNDING, CELL_SIZE, FONT_CENTER, FONT_CORNER,
 };
 use crate::emoji::{EmojiCode, EmojiMap};
+use crate::index::CellIndex;
 use arrayvec::ArrayVec;
 use egui::{
     Align2, Color32, Margin, Painter, Pos2, Rect, Sense, TextStyle, TextureHandle, Ui, Vec2,
 };
+use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
 
+#[derive(Debug)]
 pub enum CellElement {
     Text(String),
     Emoji(EmojiCode),
 }
 
-#[derive(Default)]
+#[derive(Debug)]
 pub struct Cell {
     pub bg_color: Option<Color32>,
     pub top_left: Option<CellElement>,
@@ -21,6 +24,7 @@ pub struct Cell {
     pub bottom_left: Option<CellElement>,
     pub bottom_right: Option<CellElement>,
     pub center: Option<CellElement>,
+    pub index: CellIndex,
 }
 
 struct DrawAttrs {
@@ -45,79 +49,39 @@ impl TryFrom<&str> for CellElement {
 }
 
 impl Cell {
-    pub fn ui_content(
+    pub fn ui_content<T>(
         &self,
         ui: &mut Ui,
         emoji_map: &EmojiMap,
-        mut cell_name: impl FnMut() -> String,
-    ) -> (Option<String>, Option<String>) {
+        mut cell_name: impl FnMut() -> T,
+    ) -> (Option<T>, Option<T>) {
         let (response, painter) = ui.allocate_painter(Vec2::splat(CELL_SIZE), Sense::click());
         let rect = response.rect - Margin::same(CELL_MARGIN);
         if let Some(bg_color) = self.bg_color {
             painter.rect_filled(response.rect, CELL_ROUNDING, bg_color);
         }
 
-        self.draw_element(
-            ui,
-            &painter,
-            emoji_map,
-            &self.center,
-            DrawAttrs {
-                align: Align2::CENTER_CENTER,
-                large: true,
-                rect,
-                bleach: true,
-            },
-        );
+        for (cell_element, align, large, bleach) in [
+            (&self.center, Align2::CENTER_CENTER, true, true),
+            (&self.top_left, Align2::LEFT_TOP, false, false),
+            (&self.top_right, Align2::RIGHT_TOP, false, false),
+            (&self.bottom_left, Align2::LEFT_BOTTOM, false, false),
+            (&self.bottom_right, Align2::RIGHT_BOTTOM, false, false),
+        ] {
+            self.draw_element(
+                ui,
+                &painter,
+                emoji_map,
+                cell_element,
+                DrawAttrs {
+                    align,
+                    large,
+                    rect,
+                    bleach,
+                },
+            );
+        }
 
-        self.draw_element(
-            ui,
-            &painter,
-            emoji_map,
-            &self.top_left,
-            DrawAttrs {
-                align: Align2::LEFT_TOP,
-                large: false,
-                rect,
-                bleach: false,
-            },
-        );
-        self.draw_element(
-            ui,
-            &painter,
-            emoji_map,
-            &self.top_right,
-            DrawAttrs {
-                align: Align2::RIGHT_TOP,
-                large: false,
-                rect,
-                bleach: false,
-            },
-        );
-        self.draw_element(
-            ui,
-            &painter,
-            emoji_map,
-            &self.bottom_left,
-            DrawAttrs {
-                align: Align2::LEFT_BOTTOM,
-                large: false,
-                rect,
-                bleach: false,
-            },
-        );
-        self.draw_element(
-            ui,
-            &painter,
-            emoji_map,
-            &self.bottom_right,
-            DrawAttrs {
-                align: Align2::RIGHT_BOTTOM,
-                large: false,
-                rect,
-                bleach: false,
-            },
-        );
         (
             if response.clicked() {
                 Some(cell_name())
@@ -167,11 +131,7 @@ impl Cell {
             attrs.align.pos_in_rect(&attrs.rect),
             attrs.align,
             text,
-            ui.style()
-                .text_styles
-                .get(&TextStyle::Name(font_size.into()))
-                .unwrap()
-                .clone(),
+            ui.style().text_styles[&TextStyle::Name(font_size.into())].clone(),
             Color32::from_rgba_unmultiplied(
                 0x2c,
                 0x3e,
@@ -219,6 +179,15 @@ impl Display for CellElement {
         match self {
             CellElement::Text(text) => text.fmt(f),
             CellElement::Emoji(emoji_code) => emoji_code.fmt(f),
+        }
+    }
+}
+
+impl<'a> From<&'a CellElement> for Cow<'a, str> {
+    fn from(value: &'a CellElement) -> Self {
+        match value {
+            CellElement::Text(text) => Cow::Borrowed(text.as_str()),
+            CellElement::Emoji(emoji_code) => Cow::Owned(emoji_code.to_string()),
         }
     }
 }

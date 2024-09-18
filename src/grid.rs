@@ -1,20 +1,32 @@
 use crate::cell::{Cell, CellElement};
 use crate::consts::{CELL_SIZE, GRID_SPACING};
-use crate::emoji::EmojiMap;
+use crate::emoji::{EmojiCode, EmojiMap};
+use crate::homeland::Homeland;
+use crate::index::CellIndex;
 use anyhow::{anyhow, Result};
 use egui::ecolor::ParseHexColorError;
 use egui::{Color32, Grid, ScrollArea, Ui, Vec2};
 use num_integer::Roots;
 use simplecss::DeclarationTokenizer;
+use std::borrow::Cow;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
 
+#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
+pub enum PoI {
+    Forum,
+    Campfire(Homeland),
+}
+
 #[derive(Default)]
 pub struct MapGrid {
+    pub square_size: usize,
     /// Row major
     pub grid: Vec<Cell>,
-    pub square_size: usize,
+    pub index: HashMap<CellIndex, usize>,
+    pub poi: HashMap<PoI, usize>,
 }
 
 impl MapGrid {
@@ -35,37 +47,82 @@ impl MapGrid {
         if square_size * square_size != map_cells.len() {
             return Err(anyhow!("Map grid is not square: {}", map_cells.len()));
         }
-        let grid = map_cells
+        let (grid, index): (Vec<_>, HashMap<_, _>) = map_cells
             .into_iter()
-            .map(|map_cell| {
-                Ok(Cell {
-                    bg_color: parse_bg_color_from_style(map_cell)?,
-                    top_left: parse_cell_element(map_cell, parser, "top-left-text"),
-                    top_right: parse_cell_element(map_cell, parser, "top-right-text"),
-                    bottom_left: parse_cell_element(map_cell, parser, "bottom-left-text"),
-                    bottom_right: parse_cell_element(map_cell, parser, "bottom-right-text"),
-                    center: parse_text(map_cell, parser),
-                })
+            .enumerate()
+            .map(|(i, map_cell)| {
+                let bg_color = parse_bg_color_from_style(map_cell)?;
+                let top_left = parse_cell_element(map_cell, parser, "top-left-text");
+                let top_right = parse_cell_element(map_cell, parser, "top-right-text");
+                let bottom_left = parse_cell_element(map_cell, parser, "bottom-left-text");
+                let bottom_right = parse_cell_element(map_cell, parser, "bottom-right-text");
+                let center = parse_text(map_cell, parser);
+                let index = (
+                    bottom_right.as_ref().map(Cow::from),
+                    top_right.as_ref().map(Cow::from),
+                )
+                    .try_into()
+                    .map_err(|_| {
+                        anyhow!(
+                            "Can not index cell {} {}",
+                            bottom_right
+                                .as_ref()
+                                .map(|s| s.to_string())
+                                .unwrap_or_default(),
+                            top_right
+                                .as_ref()
+                                .map(|s| s.to_string())
+                                .unwrap_or_default()
+                        )
+                    })?;
+                Ok((
+                    Cell {
+                        bg_color,
+                        top_left,
+                        top_right,
+                        bottom_left,
+                        bottom_right,
+                        center,
+                        index,
+                    },
+                    (index, i),
+                ))
             })
             .collect::<Result<_>>()?;
-        Ok(Self { square_size, grid })
-    }
-
-    fn i_to_name(&self, i: usize) -> String {
-        let cell = &self.grid[i];
-        match (&cell.bottom_right, &cell.top_right) {
-            (Some(bottom_right), Some(top_right)) => format!("{bottom_right} {top_right}"),
-            (Some(bottom_right), None) => bottom_right.to_string(),
-            (None, Some(top_right)) => top_right.to_string(),
-            (None, None) => String::new(),
-        }
+        let poi = grid
+            .iter()
+            .enumerate()
+            .filter_map(|(i, cell)| {
+                Some((
+                    match cell {
+                        Cell {
+                            center: Some(CellElement::Emoji(EmojiCode('\u{1f3db}', None))),
+                            ..
+                        } => PoI::Forum,
+                        Cell {
+                            center: Some(CellElement::Emoji(EmojiCode('\u{1f525}', None))),
+                            bottom_right: Some(CellElement::Emoji(EmojiCode(ch, None))),
+                            ..
+                        } => PoI::Campfire(Homeland::try_from(*ch).ok()?),
+                        _ => None?,
+                    },
+                    i,
+                ))
+            })
+            .collect();
+        Ok(Self {
+            square_size,
+            grid,
+            index,
+            poi,
+        })
     }
 
     pub fn ui_content(
         &self,
         ui: &mut Ui,
         emoji_map: &EmojiMap,
-    ) -> (Option<String>, Option<String>) {
+    ) -> (Option<CellIndex>, Option<CellIndex>) {
         Grid::new("map_grid")
             .striped(false)
             .spacing(Vec2::splat(GRID_SPACING))
@@ -77,7 +134,7 @@ impl MapGrid {
                 for (i, cell) in self.grid.iter().enumerate() {
                     ScrollArea::both().id_source(i).show(ui, |ui| {
                         let (new_left, new_right) =
-                            cell.ui_content(ui, emoji_map, || self.i_to_name(i));
+                            cell.ui_content(ui, emoji_map, || self.grid[i].index);
                         if new_left.is_some() {
                             left = new_left;
                         }
@@ -117,8 +174,7 @@ fn has_class(html_tag: &HTMLTag, class: &str) -> bool {
     html_tag
         .attributes()
         .class()
-        .filter(|&bytes| bytes == class)
-        .is_some()
+        .is_some_and(|bytes| bytes == class)
 }
 
 fn parse_text(html_tag: &HTMLTag, parser: &Parser) -> Option<CellElement> {

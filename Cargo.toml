@@ -13,6 +13,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 [dependencies]
 anyhow = "1"
 arrayvec = "0.7"
+compare = "0.1"
 egui = "0.28"
 egui_extras = { version = "0.28", features = ["http"] }
 eframe = { version = "0.28", default-features = false, features = [
@@ -24,6 +25,9 @@ log = "0.4"
 num-integer = "0.1"
 resvg = { version = "0.43", default-features = false }
 simplecss = "0.2"
+smallvec = "1"
+strum = { version = "0.26", features = ["derive"] }
+time = "0.3"
 tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
 tl = "0.7"
 

@@ -1,13 +1,18 @@
 use crate::consts::{FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE};
+use crate::cost::CostComparator;
 use crate::emoji::EmojiMap;
 use crate::grid::MapGrid;
 use crate::homeland::Homeland;
+use crate::index::CellIndex;
+use crate::pathfinder::Graph;
 use eframe::emath::Align;
 use egui::load::BytesPoll;
 use egui::{FontId, Image, ImageButton, Layout, ScrollArea, TextStyle, Visuals, Widget};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
+use std::sync::{Arc, RwLock};
+use strum::IntoEnumIterator;
 
 #[derive(Deserialize, Serialize, Default)]
 #[serde(default)]
@@ -17,12 +22,14 @@ pub struct MarshrutkaApp {
     show_settings: bool,
     show_about: bool,
     #[serde(skip)]
-    grid: OnceCell<MapGrid>,
-    from: String,
-    to: String,
+    grid: Option<Arc<MapGrid>>,
+    from: Option<CellIndex>,
+    to: Option<CellIndex>,
     homeland: Homeland,
     #[serde(skip)]
     need_to_save: bool,
+    #[serde(skip)]
+    graph: Option<Arc<RwLock<Graph>>>,
 }
 
 impl MarshrutkaApp {
@@ -87,7 +94,10 @@ impl MarshrutkaApp {
                 ui.label("Your homeland: ");
                 let emoji_code = &self.homeland.into();
                 if let Some(flag) = self.emojis(ctx).get_texture(emoji_code) {
-                    if ImageButton::new(Image::new(&flag.corner)).ui(ui).clicked() {
+                    if ImageButton::new(Image::new(&flag.corner).shrink_to_fit())
+                        .ui(ui)
+                        .clicked()
+                    {
                         self.show_settings = true;
                     }
                 }
@@ -122,19 +132,14 @@ impl MarshrutkaApp {
                     .striped(true)
                     .show(ui, |ui| {
                         egui::ComboBox::from_label("Select your homeland")
-                            .selected_text(self.homeland.as_str())
+                            .selected_text(self.homeland.name())
                             .show_ui(ui, |ui| {
-                                for homeland in [
-                                    Homeland::Blue,
-                                    Homeland::Red,
-                                    Homeland::Green,
-                                    Homeland::Yellow,
-                                ] {
+                                for homeland in Homeland::iter() {
                                     if ui
                                         .selectable_value(
                                             &mut self.homeland,
                                             homeland,
-                                            homeland.as_str(),
+                                            homeland.name(),
                                         )
                                         .changed()
                                     {
@@ -145,58 +150,99 @@ impl MarshrutkaApp {
                     })
             });
     }
+
+    fn eval_dyn_graph(&mut self) {
+        let grid = self.grid.clone().unwrap();
+        let graph = self.graph.clone().unwrap();
+        {
+            let mut graph = graph.write().unwrap();
+            graph.init_dynamic(grid.as_ref(), self.homeland);
+        }
+    }
 }
 
 impl eframe::App for MarshrutkaApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        let bytes = ctx.try_load_bytes("https://api.chatwars.me/webview/map");
+
+        let s = match &bytes {
+            Ok(BytesPoll::Pending { .. }) => {
+                ctx.request_repaint();
+                egui::CentralPanel::default().show(ctx, |ui| ui.label("Loading..."));
+                return;
+            }
+            Ok(BytesPoll::Ready { bytes, .. }) => String::from_utf8_lossy(bytes),
+            Err(_) => Cow::Borrowed(include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/Map.html"
+            ))),
+        };
+
+        if self.grid.is_none() {
+            match MapGrid::parse(s.as_ref()) {
+                Ok(grid) => {
+                    self.grid = Some(Arc::new(grid));
+                    self.graph = Some(Arc::new(RwLock::new(Graph::new(
+                        self.grid.as_ref().unwrap().as_ref(),
+                    ))));
+                    self.eval_dyn_graph();
+                }
+                Err(err) => {
+                    egui::CentralPanel::default()
+                        .show(ctx, |ui| ui.label(format!("Invalid map: {err}")));
+                    return;
+                }
+            };
+        }
+
         self.top_menu(ctx);
 
         self.settings(ctx);
         self.about(ctx);
 
+        let grid = self.grid.clone().unwrap();
+        let graph = self.graph.clone().unwrap();
+
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
             ui.heading("Marshrutka");
-            ui.label(format!("From '{}' to '{}'", self.from, self.to));
+            ui.label(format!(
+                "From '{}' to '{}'",
+                self.from.map(|s| s.to_string()).unwrap_or_default(),
+                self.to.map(|s| s.to_string()).unwrap_or_default()
+            ));
 
-            let bytes = ui
-                .ctx()
-                .try_load_bytes("https://api.chatwars.me/webview/map");
-
-            {
-                let s = match &bytes {
-                    Ok(BytesPoll::Pending { .. }) => {
-                        ui.ctx().request_repaint();
-                        ui.label("Loading...");
-                        return;
+            ScrollArea::both().show(ui, |ui| {
+                ui.collapsing("Map", |ui| {
+                    let (from, to) = ScrollArea::both()
+                        .show(ui, |ui| grid.ui_content(ui, self.emojis(ui.ctx())))
+                        .inner;
+                    if let Some(from) = from {
+                        self.from = Some(from);
+                        self.need_to_save = true;
                     }
-                    Ok(BytesPoll::Ready { bytes, .. }) => String::from_utf8_lossy(bytes),
-                    Err(_) => Cow::Borrowed(include_str!(concat!(
-                        env!("CARGO_MANIFEST_DIR"),
-                        "/Map.html"
-                    ))),
-                };
-
-                match MapGrid::parse(s.as_ref()) {
-                    Ok(grid) => {
-                        let (from, to) = ScrollArea::both()
-                            .show(ui, |ui| grid.ui_content(ui, self.emojis(ui.ctx())))
-                            .inner;
-                        if let Some(from) = from {
-                            self.from = from;
-                            self.need_to_save = true;
-                        }
-                        if let Some(to) = to {
-                            self.to = to;
-                            self.need_to_save = true;
-                        }
+                    if let Some(to) = to {
+                        self.to = Some(to);
+                        self.need_to_save = true;
                     }
-                    Err(e) => {
-                        ui.label(format!("Invalid map: {e}"));
+                });
+                {
+                    let graph = graph.read().unwrap();
+                    ui.separator();
+                    if let Some((from, to)) = self.from.zip(self.to) {
+                        ui.label(format!(
+                            "{:#?}",
+                            graph.find_path(
+                                50,
+                                from,
+                                to,
+                                (CostComparator::Money, CostComparator::Legs)
+                            )
+                        ));
                     }
                 }
-            }
+            });
         });
 
         if self.need_to_save {
@@ -204,6 +250,8 @@ impl eframe::App for MarshrutkaApp {
                 self.save(storage);
             }
             self.need_to_save = false;
+            self.eval_dyn_graph();
+            ctx.request_repaint();
         }
     }
 

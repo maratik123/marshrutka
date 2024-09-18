@@ -1,8 +1,23 @@
 use crate::emoji::EmojiCode;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
+use strum::EnumIter;
 
-#[derive(Deserialize, Serialize, Default, Eq, PartialEq, Copy, Clone)]
+#[derive(
+    Deserialize,
+    Serialize,
+    Default,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    Hash,
+    Debug,
+    EnumIter,
+    Ord,
+    PartialOrd,
+)]
 pub enum Homeland {
     #[default]
     Blue,
@@ -12,12 +27,39 @@ pub enum Homeland {
 }
 
 impl Homeland {
-    pub fn as_str(&self) -> &'static str {
+    pub fn name(&self) -> &'static str {
         match self {
             Homeland::Blue => "Blue",
             Homeland::Red => "Red",
             Homeland::Green => "Green",
             Homeland::Yellow => "Yellow",
+        }
+    }
+
+    pub fn as_abbrev(&self) -> char {
+        match self {
+            Homeland::Blue => 'B',
+            Homeland::Red => 'R',
+            Homeland::Green => 'G',
+            Homeland::Yellow => 'Y',
+        }
+    }
+
+    pub fn neighbours(&self) -> [Homeland; 2] {
+        match self {
+            Homeland::Blue => [Homeland::Yellow, Homeland::Red],
+            Homeland::Red => [Homeland::Blue, Homeland::Green],
+            Homeland::Green => [Homeland::Red, Homeland::Yellow],
+            Homeland::Yellow => [Homeland::Blue, Homeland::Green],
+        }
+    }
+
+    pub fn farland(&self) -> Homeland {
+        match self {
+            Homeland::Blue => Homeland::Green,
+            Homeland::Red => Homeland::Yellow,
+            Homeland::Green => Homeland::Blue,
+            Homeland::Yellow => Homeland::Red,
         }
     }
 }
@@ -55,6 +97,38 @@ impl From<Homeland> for EmojiCode {
 }
 impl Display for Homeland {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.as_str().fmt(f)
+        self.name().fmt(f)
+    }
+}
+
+impl FromStr for Homeland {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "B" => Homeland::Blue,
+            "R" => Homeland::Red,
+            "G" => Homeland::Green,
+            "Y" => Homeland::Yellow,
+            _ => {
+                return Err(());
+            }
+        })
+    }
+}
+
+impl TryFrom<char> for Homeland {
+    type Error = ();
+
+    fn try_from(ch: char) -> Result<Self, Self::Error> {
+        Ok(match ch {
+            'B' => Homeland::Blue,
+            'R' => Homeland::Red,
+            'G' => Homeland::Green,
+            'Y' => Homeland::Yellow,
+            _ => {
+                return Err(());
+            }
+        })
     }
 }

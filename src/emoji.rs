@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use tiny_skia::{IntSize, Pixmap};
 
-#[derive(Hash, PartialEq, Eq, Clone, Copy, Ord, PartialOrd)]
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct EmojiCode(pub char, pub Option<char>);
 
 #[derive(Clone)]
@@ -82,7 +82,7 @@ macro_rules! aliases_to_chars_map {
 }
 
 fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiTexture> {
-    let mut map: HashMap<_, _> = char_to_emoji_map![
+    let char_to_emoji_map = char_to_emoji_map![
         (('\u{1f1ea}', '\u{1f1fa}'), "emoji_u1f1ea_1f1fa.svg"),
         (('\u{1f1ee}', '\u{1f1f2}'), "emoji_u1f1ee_1f1f2.svg"),
         (('\u{1f1f2}', '\u{1f1f4}'), "emoji_u1f1f2_1f1f4.svg"),
@@ -122,9 +122,17 @@ fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiTexture> {
         ('\u{26f2}', "emoji_u26f2.svg"),
         ('\u{26fa}', "emoji_u26fa.svg"),
         ('\u{2728}', "emoji_u2728.svg"),
-    ]
-    .into_iter()
-    .map(|(ch, content)| {
+    ];
+    let aliases = aliases_to_chars_map![
+        (('\u{1f6e1}', '\u{fe0f}'), '\u{1f6e1}'),
+        (('\u{2694}', '\u{fe0f}'), '\u{2694}'),
+        (('\u{26fa}', '\u{fe0f}'), '\u{26fa}'),
+        (('\u{26f2}', '\u{fe0f}'), '\u{26f2}'),
+    ];
+
+    let mut map = HashMap::with_capacity(char_to_emoji_map.len() + aliases.len());
+
+    map.extend(char_to_emoji_map.into_iter().map(|(ch, content)| {
         let rtree = Tree::from_data(content, &Options::default()).unwrap();
         let svg_to_texture =
             |ctx, width| svg_to_texture(ctx, format!("{ch}|{width}"), &rtree, width);
@@ -135,16 +143,9 @@ fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiTexture> {
                 corner: svg_to_texture(ctx, EMOJI_CORNER_SIZE as _),
             },
         )
-    })
-    .collect();
+    }));
 
-    let aliases = aliases_to_chars_map![
-        (('\u{1f6e1}', '\u{fe0f}'), '\u{1f6e1}'),
-        (('\u{2694}', '\u{fe0f}'), '\u{2694}'),
-        (('\u{26fa}', '\u{fe0f}'), '\u{26fa}'),
-        (('\u{26f2}', '\u{fe0f}'), '\u{26f2}'),
-    ]
-    .map(|(from, to)| (from, map.get(&to).unwrap().clone()));
+    let aliases = aliases.map(|(from, to)| (from, map[&to].clone()));
     map.extend(aliases);
 
     map
@@ -208,12 +209,8 @@ mod tests {
         let ctx = Context::default();
         let emojis = init_emojis(&ctx);
         assert_eq!(
-            emojis
-                .get(&('\u{1f6e1}', '\u{fe0f}').into())
-                .unwrap()
-                .center
-                .id(),
-            emojis.get(&'\u{1f6e1}'.into()).unwrap().center.id()
+            emojis[&('\u{1f6e1}', '\u{fe0f}').into()].center.id(),
+            emojis[&'\u{1f6e1}'.into()].center.id()
         );
     }
 }
