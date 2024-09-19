@@ -1,15 +1,15 @@
 use crate::consts::{BLEACH_ALPHA, FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE};
 use crate::cost::{CostComparator, EdgeCost};
 use crate::emoji::EmojiMap;
-use crate::grid::MapGrid;
+use crate::grid::{MapGrid, MapGridResponse};
 use crate::homeland::Homeland;
 use crate::index::CellIndex;
 use crate::pathfinder::Graph;
 use eframe::emath::Align;
 use egui::load::BytesPoll;
 use egui::{
-    Color32, FontId, Image, ImageButton, InnerResponse, Layout, Pos2, ScrollArea, Stroke,
-    TextStyle, Ui, Vec2, Visuals, Widget,
+    Color32, FontId, Image, ImageButton, InnerResponse, Layout, ScrollArea, TextStyle, Ui, Visuals,
+    Widget,
 };
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -235,7 +235,12 @@ impl eframe::App for MarshrutkaApp {
                 let grid_response = ui
                     .collapsing("Map", |ui| {
                         let InnerResponse {
-                            inner: (centers, from, to),
+                            inner:
+                                MapGridResponse {
+                                    centers,
+                                    left: from,
+                                    right: to,
+                                },
                             response,
                         } = ScrollArea::both()
                             .show(ui, |ui| grid.ui_content(ui, self.emojis(ui.ctx())))

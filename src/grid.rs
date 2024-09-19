@@ -29,6 +29,12 @@ pub struct MapGrid {
     pub poi: HashMap<PoI, usize>,
 }
 
+pub struct MapGridResponse {
+    pub centers: HashMap<CellIndex, Pos2>,
+    pub left: Option<CellIndex>,
+    pub right: Option<CellIndex>,
+}
+
 impl MapGrid {
     pub fn parse(s: &str) -> Result<Self> {
         let dom = tl::parse(s, ParserOptions::new())?;
@@ -118,15 +124,7 @@ impl MapGrid {
         })
     }
 
-    pub fn ui_content(
-        &self,
-        ui: &mut Ui,
-        emoji_map: &EmojiMap,
-    ) -> InnerResponse<(
-        HashMap<CellIndex, Pos2>,
-        Option<CellIndex>,
-        Option<CellIndex>,
-    )> {
+    pub fn ui_content(&self, ui: &mut Ui, emoji_map: &EmojiMap) -> InnerResponse<MapGridResponse> {
         Grid::new("map_grid")
             .striped(false)
             .spacing(Vec2::splat(GRID_SPACING))
@@ -160,7 +158,11 @@ impl MapGrid {
                         (cell.index, center)
                     })
                     .collect();
-                (centers, left, right)
+                MapGridResponse {
+                    centers,
+                    left,
+                    right,
+                }
             })
     }
 }
