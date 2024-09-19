@@ -1,7 +1,9 @@
 use crate::index::CellIndex;
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign};
+use strum::EnumIter;
 use time::ext::NumericalDuration;
 use time::Duration;
 
@@ -41,7 +43,7 @@ impl EdgeCost {
     }
 }
 
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, EnumIter)]
 pub enum CostComparator {
     Legs,
     Time,

@@ -1,5 +1,5 @@
-use crate::consts::{FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE};
-use crate::cost::CostComparator;
+use crate::consts::{BLEACH_ALPHA, FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE};
+use crate::cost::{CostComparator, EdgeCost};
 use crate::emoji::EmojiMap;
 use crate::grid::MapGrid;
 use crate::homeland::Homeland;
@@ -7,14 +7,17 @@ use crate::index::CellIndex;
 use crate::pathfinder::Graph;
 use eframe::emath::Align;
 use egui::load::BytesPoll;
-use egui::{FontId, Image, ImageButton, Layout, ScrollArea, TextStyle, Visuals, Widget};
+use egui::{
+    Color32, FontId, Image, ImageButton, InnerResponse, Layout, Pos2, ScrollArea, Stroke,
+    TextStyle, Ui, Vec2, Visuals, Widget,
+};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::sync::{Arc, RwLock};
 use strum::IntoEnumIterator;
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub struct MarshrutkaApp {
     #[serde(skip)]
@@ -30,6 +33,7 @@ pub struct MarshrutkaApp {
     need_to_save: bool,
     #[serde(skip)]
     graph: Option<Arc<RwLock<Graph>>>,
+    sort_by: (CostComparator, CostComparator),
 }
 
 impl MarshrutkaApp {
@@ -101,6 +105,20 @@ impl MarshrutkaApp {
                         self.show_settings = true;
                     }
                 }
+                ui.separator();
+                let mut sort_selector = |ui: &mut Ui, label, val: &mut CostComparator| {
+                    egui::ComboBox::from_label(label)
+                        .selected_text(val.as_str())
+                        .show_ui(ui, |ui| {
+                            for sort in CostComparator::iter() {
+                                if ui.selectable_value(val, sort, sort.as_str()).changed() {
+                                    self.need_to_save = true;
+                                }
+                            }
+                        });
+                };
+                sort_selector(ui, "Sort by", &mut self.sort_by.0);
+                sort_selector(ui, "Then sort by", &mut self.sort_by.1);
             });
         });
     }
@@ -214,32 +232,59 @@ impl eframe::App for MarshrutkaApp {
             ));
 
             ScrollArea::both().show(ui, |ui| {
-                ui.collapsing("Map", |ui| {
-                    let (from, to) = ScrollArea::both()
-                        .show(ui, |ui| grid.ui_content(ui, self.emojis(ui.ctx())))
-                        .inner;
-                    if let Some(from) = from {
-                        self.from = Some(from);
-                        self.need_to_save = true;
-                    }
-                    if let Some(to) = to {
-                        self.to = Some(to);
-                        self.need_to_save = true;
-                    }
-                });
-                {
+                let grid_response = ui
+                    .collapsing("Map", |ui| {
+                        let InnerResponse {
+                            inner: (centers, from, to),
+                            response,
+                        } = ScrollArea::both()
+                            .show(ui, |ui| grid.ui_content(ui, self.emojis(ui.ctx())))
+                            .inner;
+                        if let Some(from) = from {
+                            self.from = Some(from);
+                            self.need_to_save = true;
+                        }
+                        if let Some(to) = to {
+                            self.to = Some(to);
+                            self.need_to_save = true;
+                        }
+                        (centers, response)
+                    })
+                    .body_returned;
+                let path = {
                     let graph = graph.read().unwrap();
                     ui.separator();
-                    if let Some((from, to)) = self.from.zip(self.to) {
-                        ui.label(format!(
-                            "{:#?}",
-                            graph.find_path(
-                                50,
-                                from,
-                                to,
-                                (CostComparator::Money, CostComparator::Legs)
-                            )
-                        ));
+                    self.from.zip(self.to).and_then(|(from, to)| {
+                        let path = graph.find_path(50, from, to, self.sort_by);
+                        ui.label(format!("{:#?}", path));
+                        path
+                    })
+                };
+                if let Some((path, (centers, grid_response))) = path.zip(grid_response) {
+                    let painter = ui.painter_at(grid_response.interact_rect);
+                    for command in path
+                        .commands
+                        .iter()
+                        .filter(|command| command.edge_cost != &EdgeCost::NoMove)
+                    {
+                        let from = centers[&command.from];
+                        let to = centers[&command.to];
+                        let vec = to - from;
+                        painter.arrow(
+                            from,
+                            vec,
+                            (
+                                3.0,
+                                match command.edge_cost {
+                                    EdgeCost::NoMove => Color32::PLACEHOLDER,
+                                    EdgeCost::CentralMove => Color32::DARK_GRAY,
+                                    EdgeCost::StandardMove => Color32::BLUE,
+                                    EdgeCost::Caravan { .. } => Color32::GREEN,
+                                    EdgeCost::ScrollOfEscape => Color32::RED,
+                                }
+                                .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),
+                            ),
+                        );
                     }
                 }
             });
@@ -258,5 +303,22 @@ impl eframe::App for MarshrutkaApp {
     /// Called by the framework to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
+    }
+}
+
+impl Default for MarshrutkaApp {
+    fn default() -> Self {
+        Self {
+            emojis: Default::default(),
+            show_settings: Default::default(),
+            show_about: Default::default(),
+            grid: Default::default(),
+            from: Default::default(),
+            to: Default::default(),
+            homeland: Default::default(),
+            need_to_save: Default::default(),
+            graph: Default::default(),
+            sort_by: (CostComparator::Legs, CostComparator::Money),
+        }
     }
 }

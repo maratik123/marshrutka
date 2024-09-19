@@ -54,7 +54,7 @@ impl Cell {
         ui: &mut Ui,
         emoji_map: &EmojiMap,
         mut cell_name: impl FnMut() -> T,
-    ) -> (Option<T>, Option<T>) {
+    ) -> (Pos2, Option<T>, Option<T>) {
         let (response, painter) = ui.allocate_painter(Vec2::splat(CELL_SIZE), Sense::click());
         let rect = response.rect - Margin::same(CELL_MARGIN);
         if let Some(bg_color) = self.bg_color {
@@ -83,6 +83,7 @@ impl Cell {
         }
 
         (
+            rect.center(),
             if response.clicked() {
                 Some(cell_name())
             } else {

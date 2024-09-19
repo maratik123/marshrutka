@@ -5,7 +5,7 @@ use crate::homeland::Homeland;
 use crate::index::CellIndex;
 use anyhow::{anyhow, Result};
 use egui::ecolor::ParseHexColorError;
-use egui::{Color32, Grid, ScrollArea, Ui, Vec2};
+use egui::{Color32, Grid, InnerResponse, Pos2, ScrollArea, Ui, Vec2};
 use num_integer::Roots;
 use simplecss::DeclarationTokenizer;
 use std::borrow::Cow;
@@ -122,7 +122,11 @@ impl MapGrid {
         &self,
         ui: &mut Ui,
         emoji_map: &EmojiMap,
-    ) -> (Option<CellIndex>, Option<CellIndex>) {
+    ) -> InnerResponse<(
+        HashMap<CellIndex, Pos2>,
+        Option<CellIndex>,
+        Option<CellIndex>,
+    )> {
         Grid::new("map_grid")
             .striped(false)
             .spacing(Vec2::splat(GRID_SPACING))
@@ -131,24 +135,33 @@ impl MapGrid {
             .show(ui, |ui| {
                 let mut left = None;
                 let mut right = None;
-                for (i, cell) in self.grid.iter().enumerate() {
-                    ScrollArea::both().id_source(i).show(ui, |ui| {
-                        let (new_left, new_right) =
-                            cell.ui_content(ui, emoji_map, || self.grid[i].index);
-                        if new_left.is_some() {
-                            left = new_left;
+                let centers = self
+                    .grid
+                    .iter()
+                    .enumerate()
+                    .map(|(i, cell)| {
+                        let center = ScrollArea::both()
+                            .id_source(i)
+                            .show(ui, |ui| {
+                                let (center, new_left, new_right) =
+                                    cell.ui_content(ui, emoji_map, || self.grid[i].index);
+                                if new_left.is_some() {
+                                    left = new_left;
+                                }
+                                if new_right.is_some() {
+                                    right = new_right;
+                                }
+                                center
+                            })
+                            .inner;
+                        if (i + 1) % self.square_size == 0 {
+                            ui.end_row();
                         }
-                        if new_right.is_some() {
-                            right = new_right;
-                        }
-                    });
-                    if (i + 1) % self.square_size == 0 {
-                        ui.end_row();
-                    }
-                }
-                (left, right)
+                        (cell.index, center)
+                    })
+                    .collect();
+                (centers, left, right)
             })
-            .inner
     }
 }
 

@@ -165,4 +165,4 @@ macro_rules! from_u_to_pos {
     };
 }
 
-from_u_to_pos!(u16 u32 u64 u128 usize);
+from_u_to_pos!(u8 u16 u32 u64 u128 usize);
