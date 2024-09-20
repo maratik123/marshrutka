@@ -1,7 +1,7 @@
 use crate::consts::{BLEACH_ALPHA, FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE};
 use crate::cost::{CostComparator, EdgeCost};
 use crate::emoji::EmojiMap;
-use crate::grid::{MapGrid, MapGridResponse};
+use crate::grid::{arrow, MapGrid, MapGridResponse};
 use crate::homeland::Homeland;
 use crate::index::CellIndex;
 use crate::pathfinder::Graph;
@@ -106,8 +106,9 @@ impl MarshrutkaApp {
                     }
                 }
                 ui.separator();
+                ui.label("Preference: ");
                 let mut sort_selector = |ui: &mut Ui, label, val: &mut CostComparator| {
-                    egui::ComboBox::from_label(label)
+                    egui::ComboBox::from_id_source(label)
                         .selected_text(val.as_str())
                         .show_ui(ui, |ui| {
                             for sort in CostComparator::iter() {
@@ -115,7 +116,9 @@ impl MarshrutkaApp {
                                     self.need_to_save = true;
                                 }
                             }
-                        });
+                        })
+                        .response
+                        .on_hover_text(label);
                 };
                 sort_selector(ui, "Sort by", &mut self.sort_by.0);
                 sort_selector(ui, "Then sort by", &mut self.sort_by.1);
@@ -129,6 +132,9 @@ impl MarshrutkaApp {
             .show(ctx, |ui| {
                 ui.with_layout(Layout::top_down(Align::Center), |ui| {
                     ui.heading("Marshrutka");
+                    ui.add_space(8.0);
+                    ui.label("Transport accessibility\nfor retarded people");
+                    ui.add_space(8.0);
                     if cfg!(debug_assertions) {
                         egui::warn_if_debug_build(ui);
                     }
@@ -274,21 +280,18 @@ impl eframe::App for MarshrutkaApp {
                     {
                         let from = centers[&command.from];
                         let to = centers[&command.to];
-                        let vec = to - from;
-                        painter.arrow(
+                        arrow(
+                            &painter,
                             from,
-                            vec,
-                            (
-                                3.0,
-                                match command.edge_cost {
-                                    EdgeCost::NoMove => Color32::PLACEHOLDER,
-                                    EdgeCost::CentralMove => Color32::DARK_GRAY,
-                                    EdgeCost::StandardMove => Color32::BLUE,
-                                    EdgeCost::Caravan { .. } => Color32::GREEN,
-                                    EdgeCost::ScrollOfEscape => Color32::RED,
-                                }
-                                .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),
-                            ),
+                            to,
+                            match command.edge_cost {
+                                EdgeCost::NoMove => Color32::PLACEHOLDER,
+                                EdgeCost::CentralMove => Color32::RED,
+                                EdgeCost::StandardMove => Color32::BLUE,
+                                EdgeCost::Caravan { .. } => Color32::GREEN,
+                                EdgeCost::ScrollOfEscape => Color32::BROWN,
+                            }
+                            .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),
                         );
                     }
                 }

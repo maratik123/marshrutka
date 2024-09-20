@@ -1,11 +1,12 @@
 use crate::cell::{Cell, CellElement};
-use crate::consts::{CELL_SIZE, GRID_SPACING};
+use crate::consts::{ARROW_WIDTH, CELL_SIZE, GRID_SPACING};
 use crate::emoji::{EmojiCode, EmojiMap};
 use crate::homeland::Homeland;
 use crate::index::CellIndex;
 use anyhow::{anyhow, Result};
+use eframe::emath::Rot2;
 use egui::ecolor::ParseHexColorError;
-use egui::{Color32, Grid, InnerResponse, Pos2, ScrollArea, Ui, Vec2};
+use egui::{Color32, Grid, InnerResponse, Painter, Pos2, ScrollArea, Stroke, Ui, Vec2};
 use num_integer::Roots;
 use simplecss::DeclarationTokenizer;
 use std::borrow::Cow;
@@ -165,6 +166,16 @@ impl MapGrid {
                 }
             })
     }
+}
+
+pub fn arrow(painter: &Painter, from: Pos2, to: Pos2, color: Color32) {
+    let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
+    let tip_length = CELL_SIZE / 4.0;
+    let dir = tip_length * (to - from).normalized();
+    let stroke = Stroke::new(ARROW_WIDTH, color);
+    painter.line_segment([from, to], stroke);
+    painter.line_segment([to, to - rot * dir], stroke);
+    painter.line_segment([to, to - rot.inverse() * dir], stroke);
 }
 
 fn parse_cell_element(map_cell: &HTMLTag, parser: &Parser, class: &str) -> Option<CellElement> {

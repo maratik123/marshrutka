@@ -12,3 +12,5 @@ pub const CELL_MARGIN: f32 = 4.0;
 pub const CELL_ROUNDING: f32 = 5.0;
 
 pub const BLEACH_ALPHA: u8 = 166;
+
+pub const ARROW_WIDTH: f32 = 3.0;
