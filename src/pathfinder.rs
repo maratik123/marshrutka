@@ -111,6 +111,21 @@ impl Graph {
                 process_border(&mut const_edges, border, border.neighbours(), i, pos);
             });
         }
+        for border in Border::iter() {
+            for i in 1..homeland_square_size {
+                let i = i as u8;
+                Graph::append_edge_undirected_c(
+                    &mut const_edges,
+                    CellIndex::Border { border, shift: i },
+                    CellIndex::Border {
+                        border,
+                        shift: i + 1,
+                    },
+                    &EdgeCost::StandardMove,
+                );
+            }
+        }
+
         //process center
         for border in Border::iter() {
             let vertex = CellIndex::Border { border, shift: 1 };
