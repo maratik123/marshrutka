@@ -1,6 +1,6 @@
-use crate::cell::{Cell, CellElement};
+use crate::cell::{cell_parts, Cell, CellElement};
 use crate::consts::{ARROW_WIDTH, CELL_SIZE, GRID_SPACING};
-use crate::emoji::{EmojiCode, EmojiMap};
+use crate::emoji::EmojiMap;
 use crate::homeland::Homeland;
 use crate::index::CellIndex;
 use anyhow::{anyhow, Result};
@@ -17,7 +17,6 @@ use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
 pub enum PoI {
-    Forum,
     Campfire(Homeland),
 }
 
@@ -82,6 +81,7 @@ impl MapGrid {
                                 .unwrap_or_default()
                         )
                     })?;
+                let poi = cell_parts(&center, &bottom_right);
                 Ok((
                     Cell {
                         bg_color,
@@ -91,6 +91,7 @@ impl MapGrid {
                         bottom_right,
                         center,
                         index,
+                        poi,
                     },
                     (index, i),
                 ))
@@ -99,23 +100,7 @@ impl MapGrid {
         let poi = grid
             .iter()
             .enumerate()
-            .filter_map(|(i, cell)| {
-                Some((
-                    match cell {
-                        Cell {
-                            center: Some(CellElement::Emoji(EmojiCode('\u{1f3db}', None))),
-                            ..
-                        } => PoI::Forum,
-                        Cell {
-                            center: Some(CellElement::Emoji(EmojiCode('\u{1f525}', None))),
-                            bottom_right: Some(CellElement::Emoji(EmojiCode(ch, None))),
-                            ..
-                        } => PoI::Campfire(Homeland::try_from(*ch).ok()?),
-                        _ => None?,
-                    },
-                    i,
-                ))
-            })
+            .filter_map(|(i, cell)| cell.poi.map(|poi| (poi, i)))
             .collect();
         Ok(Self {
             square_size,

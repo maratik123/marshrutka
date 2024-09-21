@@ -341,7 +341,7 @@ where
     F: Fn(&T, &T) -> Ordering,
 {
     #[must_use]
-    pub fn new_by(f: F) -> Self {
+    pub const fn new_by(f: F) -> Self {
         BinaryHeap {
             data: vec![],
             cmp: FnComparator(f),

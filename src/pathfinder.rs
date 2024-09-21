@@ -10,6 +10,7 @@ use crate::homeland::Homeland;
 use crate::index::{Border, BorderDirection, CellIndex, Pos};
 use smallvec::SmallVec;
 use std::collections::HashMap;
+use std::iter;
 use strum::IntoEnumIterator;
 
 type EdgeCostRef<'a> = &'a EdgeCost;
@@ -271,6 +272,49 @@ impl Graph {
                 val.shrink_to_fit();
             }
         }
+    }
+
+    fn inflight_edges(
+        &self,
+        grid: &MapGrid,
+        homeland: Homeland,
+        scroll_of_escape_cost: u32,
+        vertex: CellIndex,
+    ) -> HashMap<CellIndex, SmallVec<[EdgeCostRef; 4]>> {
+        let mut ret: HashMap<_, SmallVec<_>> = HashMap::new();
+        match vertex {
+            CellIndex::Center => {
+                ret.reserve(Border::count() + homeland.neighbours().len() + 1);
+                // 4
+                for border in Border::iter() {
+                    ret.entry(CellIndex::Border { border, shift: 1 })
+                        .or_default()
+                        .push(&EdgeCost::CentralMove);
+                }
+                // 3
+                for enemy in homeland
+                    .neighbours()
+                    .into_iter()
+                    .chain(iter::once(homeland.farland()))
+                    .map(|enemy| grid.grid[grid.poi[&PoI::Campfire(enemy)]].index)
+                {
+                    ret.entry(enemy).or_default().push(CARAVAN_CENTER_ENEMY);
+                }
+                // 1
+                ret.entry(grid.grid[grid.poi[&PoI::Campfire(homeland)]].index)
+                    .or_default()
+                    .push(CARAVAN_CENTER_HOMELAND);
+            }
+            CellIndex::Border { .. } => {}
+            CellIndex::Homeland { .. } => {}
+        }
+        // 1
+        if grid.grid[grid.poi[&PoI::Campfire(homeland)]].index != vertex {
+            ret.entry(vertex)
+                .or_default()
+                .push(&EdgeCost::ScrollOfEscape);
+        }
+        ret
     }
 
     pub fn find_path(

@@ -27,7 +27,7 @@ pub enum Homeland {
 }
 
 impl Homeland {
-    pub fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
             Homeland::Blue => "Blue",
             Homeland::Red => "Red",
@@ -36,7 +36,7 @@ impl Homeland {
         }
     }
 
-    pub fn as_abbrev(&self) -> char {
+    pub const fn as_abbrev(&self) -> char {
         match self {
             Homeland::Blue => 'B',
             Homeland::Red => 'R',
@@ -45,7 +45,7 @@ impl Homeland {
         }
     }
 
-    pub fn neighbours(&self) -> [Homeland; 2] {
+    pub const fn neighbours(&self) -> [Homeland; 2] {
         match self {
             Homeland::Blue => [Homeland::Yellow, Homeland::Red],
             Homeland::Red => [Homeland::Blue, Homeland::Green],
@@ -54,7 +54,7 @@ impl Homeland {
         }
     }
 
-    pub fn farland(&self) -> Homeland {
+    pub const fn farland(&self) -> Homeland {
         match self {
             Homeland::Blue => Homeland::Green,
             Homeland::Red => Homeland::Yellow,

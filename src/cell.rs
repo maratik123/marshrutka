@@ -2,6 +2,8 @@ use crate::consts::{
     BLEACH_ALPHA, CELL_MARGIN, CELL_ROUNDING, CELL_SIZE, FONT_CENTER, FONT_CORNER,
 };
 use crate::emoji::{EmojiCode, EmojiMap};
+use crate::grid::PoI;
+use crate::homeland::Homeland;
 use crate::index::CellIndex;
 use arrayvec::ArrayVec;
 use egui::{
@@ -25,6 +27,7 @@ pub struct Cell {
     pub bottom_right: Option<CellElement>,
     pub center: Option<CellElement>,
     pub index: CellIndex,
+    pub poi: Option<PoI>,
 }
 
 struct DrawAttrs {
@@ -160,6 +163,16 @@ impl Cell {
                 if attrs.bleach { BLEACH_ALPHA } else { 255 },
             ),
         );
+    }
+}
+
+pub fn cell_parts(center: &Option<CellElement>, bottom_right: &Option<CellElement>) -> Option<PoI> {
+    match (center, bottom_right) {
+        (
+            Some(CellElement::Emoji(EmojiCode('\u{1f525}', None))),
+            Some(CellElement::Emoji(EmojiCode(ch, None))),
+        ) => Homeland::try_from(*ch).map(PoI::Campfire).ok(),
+        _ => None,
     }
 }
 

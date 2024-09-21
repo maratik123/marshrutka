@@ -4,7 +4,6 @@ use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign};
 use strum::EnumIter;
-use time::ext::NumericalDuration;
 use time::Duration;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
@@ -17,7 +16,7 @@ pub enum EdgeCost {
 }
 
 impl EdgeCost {
-    pub fn legs(&self) -> u32 {
+    pub const fn legs(&self) -> u32 {
         if matches!(self, EdgeCost::StandardMove) {
             1
         } else {
@@ -25,7 +24,7 @@ impl EdgeCost {
         }
     }
 
-    pub fn money(&self) -> MoneyCost {
+    pub const fn money(&self) -> MoneyCost {
         match self {
             EdgeCost::NoMove | EdgeCost::StandardMove | EdgeCost::CentralMove => MoneyCost::Fix(0),
             EdgeCost::Caravan { money, .. } => MoneyCost::Fix(*money),
@@ -33,10 +32,10 @@ impl EdgeCost {
         }
     }
 
-    pub fn time(&self) -> Duration {
+    pub const fn time(&self) -> Duration {
         match self {
-            EdgeCost::StandardMove => 3.minutes(),
-            EdgeCost::CentralMove => 10.seconds(),
+            EdgeCost::StandardMove => Duration::minutes(3),
+            EdgeCost::CentralMove => Duration::seconds(10),
             EdgeCost::Caravan { time, .. } => *time,
             EdgeCost::NoMove | EdgeCost::ScrollOfEscape => Duration::ZERO,
         }
@@ -175,7 +174,7 @@ impl Add<(&'static EdgeCost, u32, CellIndex, CellIndex)> for &TotalCost {
 }
 
 impl CostComparator {
-    fn comparator(&self) -> impl Fn(&TotalCost, &TotalCost) -> Ordering {
+    const fn comparator(&self) -> impl Fn(&TotalCost, &TotalCost) -> Ordering {
         match self {
             CostComparator::Legs => |a: &TotalCost, b: &TotalCost| a.legs.cmp(&b.legs),
             CostComparator::Money => |a: &TotalCost, b: &TotalCost| a.money.cmp(&b.money),
@@ -183,7 +182,7 @@ impl CostComparator {
         }
     }
 
-    fn probable_second_target(&self) -> CostComparator {
+    const fn probable_second_target(&self) -> CostComparator {
         match self {
             CostComparator::Legs => CostComparator::Time,
             CostComparator::Time => CostComparator::Legs,
@@ -211,7 +210,7 @@ impl CostComparator {
         )
     }
 
-    pub fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         match self {
             CostComparator::Legs => "Legs",
             CostComparator::Time => "Time",

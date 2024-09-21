@@ -29,7 +29,7 @@ impl EmojiMap {
 }
 
 impl EmojiTexture {
-    pub fn get(&self, large: bool) -> (&TextureHandle, Vec2) {
+    pub const fn get(&self, large: bool) -> (&TextureHandle, Vec2) {
         if large {
             (&self.center, Vec2::splat(FONT_CENTER_SIZE))
         } else {

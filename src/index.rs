@@ -3,10 +3,21 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
-use strum::EnumIter;
+use strum::{EnumCount, EnumIter};
 
 #[derive(
-    Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug, EnumIter, Ord, PartialOrd,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Debug,
+    EnumIter,
+    EnumCount,
+    Ord,
+    PartialOrd,
 )]
 pub enum Border {
     BR,
@@ -34,7 +45,7 @@ pub enum CellIndex {
 }
 
 impl Border {
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Border::BR => "BR",
             Border::RG => "RG",
@@ -43,7 +54,7 @@ impl Border {
         }
     }
 
-    pub fn neighbours(&self) -> [Homeland; 2] {
+    pub const fn neighbours(&self) -> [Homeland; 2] {
         match self {
             Border::BR => [Homeland::Blue, Homeland::Red],
             Border::RG => [Homeland::Red, Homeland::Green],
@@ -52,11 +63,15 @@ impl Border {
         }
     }
 
-    pub fn direction(&self) -> BorderDirection {
+    pub const fn direction(&self) -> BorderDirection {
         match self {
             Border::BR | Border::GY => BorderDirection::Horizontal,
             Border::RG | Border::YB => BorderDirection::Vertical,
         }
+    }
+
+    pub const fn count() -> usize {
+        Self::COUNT
     }
 }
 

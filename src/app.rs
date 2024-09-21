@@ -273,19 +273,13 @@ impl eframe::App for MarshrutkaApp {
                 };
                 if let Some((path, (centers, grid_response))) = path.zip(grid_response) {
                     let painter = ui.painter_at(grid_response.interact_rect);
-                    for command in path
-                        .commands
-                        .iter()
-                        .filter(|command| command.edge_cost != &EdgeCost::NoMove)
-                    {
-                        let from = centers[&command.from];
-                        let to = centers[&command.to];
+                    for command in path.commands {
                         arrow(
                             &painter,
-                            from,
-                            to,
+                            centers[&command.from],
+                            centers[&command.to],
                             match command.edge_cost {
-                                EdgeCost::NoMove => Color32::PLACEHOLDER,
+                                EdgeCost::NoMove => continue,
                                 EdgeCost::CentralMove => Color32::RED,
                                 EdgeCost::StandardMove => Color32::BLUE,
                                 EdgeCost::Caravan { .. } => Color32::GREEN,
