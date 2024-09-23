@@ -151,6 +151,10 @@ impl MapGrid {
                 }
             })
     }
+
+    pub const fn homeland_size(&self) -> usize {
+        (self.square_size - 1) / 2
+    }
 }
 
 pub fn arrow(painter: &Painter, from: Pos2, to: Pos2, color: Color32) {

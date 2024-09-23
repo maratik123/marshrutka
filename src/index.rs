@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
-use strum::{EnumCount, EnumIter};
+use strum::{EnumCount, EnumIter, IntoStaticStr};
 
 #[derive(
     Copy,
@@ -18,6 +18,7 @@ use strum::{EnumCount, EnumIter};
     EnumCount,
     Ord,
     PartialOrd,
+    IntoStaticStr,
 )]
 pub enum Border {
     BR,
@@ -27,8 +28,8 @@ pub enum Border {
 }
 
 pub enum BorderDirection {
-    Vertical,
     Horizontal,
+    Vertical,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug, Ord, PartialOrd)]
@@ -45,13 +46,8 @@ pub enum CellIndex {
 }
 
 impl Border {
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Border::BR => "BR",
-            Border::RG => "RG",
-            Border::GY => "GY",
-            Border::YB => "YB",
-        }
+    pub fn as_str(&self) -> &'static str {
+        self.into()
     }
 
     pub const fn neighbours(&self) -> [Homeland; 2] {
@@ -180,4 +176,25 @@ macro_rules! from_u_to_pos {
     };
 }
 
+macro_rules! adjacent_pos {
+    ($(($fn_name:ident, $t:ty)),* $(,)?) => {
+        impl BorderDirection {
+            $(pub fn $fn_name(&self, i: $t) -> Pos {
+                match self {
+                    BorderDirection::Horizontal => (i, 1),
+                    BorderDirection::Vertical => (1, i),
+                }.into()
+            })*
+        }
+    }
+}
+
 from_u_to_pos!(u8 u16 u32 u64 u128 usize);
+adjacent_pos!(
+    (adjacent_pos_u8, u8),
+    (adjacent_pos_u16, u16),
+    (adjacent_pos_u32, u32),
+    (adjacent_pos_u64, u64),
+    (adjacent_pos_u128, u128),
+    (adjacent_pos_usize, usize)
+);

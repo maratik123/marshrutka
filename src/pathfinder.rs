@@ -1,378 +1,245 @@
 use crate::binary_heap::BinaryHeap;
 use crate::cost::{
     CostComparator, EdgeCost, TotalCost, CARAVAN_CAMPFIRE_CENTER, CARAVAN_CENTER_ENEMY,
-    CARAVAN_CENTER_HOMELAND, CARAVAN_FARLAND_HOMELAND, CARAVAN_HOMELAND_FARLAND,
-    CARAVAN_HOMELAND_NEIGHBOUR, CARAVAN_NEIGHBOUR_FARLAND, CARAVAN_NEIGHBOUR_HOMELAND,
-    CARAVAN_NEIGHBOUR_NEIGHBOUR,
+    CARAVAN_CENTER_HOMELAND, CARAVAN_FARLAND_HOMELAND, CARAVAN_FARLAND_NEIGHBOUR,
+    CARAVAN_HOMELAND_FARLAND, CARAVAN_HOMELAND_NEIGHBOUR, CARAVAN_NEIGHBOUR_FARLAND,
+    CARAVAN_NEIGHBOUR_HOMELAND, CARAVAN_NEIGHBOUR_NEIGHBOUR,
 };
 use crate::grid::{MapGrid, PoI};
 use crate::homeland::Homeland;
 use crate::index::{Border, BorderDirection, CellIndex, Pos};
-use smallvec::SmallVec;
+use arrayvec::ArrayVec;
 use std::collections::HashMap;
 use std::iter;
 use strum::IntoEnumIterator;
 
-type EdgeCostRef<'a> = &'a EdgeCost;
-type Edges<'a> = HashMap<CellIndex, HashMap<CellIndex, SmallVec<[EdgeCostRef<'a>; 4]>>>;
+type EdgeCostRef = &'static EdgeCost;
 
-#[derive(Default, Debug)]
-pub struct Graph {
-    pub const_edges: Edges<'static>,
-    pub dyn_edges: Edges<'static>,
-}
-
-macro_rules! append_edge {
-    ($fn_name:ident, $fn_name_undirected:ident) => {
-        fn $fn_name<'a>(
-            edges: &mut Edges<'a>,
-            from: CellIndex,
-            to: CellIndex,
-            cost: EdgeCostRef<'a>,
-        ) {
-            edges
-                .entry(from)
-                .or_default()
-                .entry(to)
-                .or_default()
-                .push(cost);
-        }
-
-        fn $fn_name_undirected<'a>(
-            edges: &mut Edges<'a>,
-            from: CellIndex,
-            to: CellIndex,
-            cost: EdgeCostRef<'a>,
-        ) {
-            Self::$fn_name(edges, from, to, cost);
-            Self::$fn_name(edges, to, from, cost);
-        }
-    };
-}
-
-impl Graph {
-    pub fn new(grid: &MapGrid) -> Self {
-        let grid_length = grid.grid.len();
-        let mut const_edges = HashMap::with_capacity(grid_length);
-        let homeland_square_size = (grid.square_size - 1) / 2;
-        // process homelands
-        for homeland in Homeland::iter() {
-            for x in 1..=homeland_square_size {
-                for y in 1..=homeland_square_size {
-                    let from = CellIndex::Homeland {
-                        homeland,
-                        pos: (x, y).into(),
-                    };
-                    for d in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
-                        let to_pos_x = (x as isize + d.0) as usize;
-                        let to_pos_y = (y as isize + d.1) as usize;
-                        if (1..=homeland_square_size).contains(&to_pos_x)
-                            && (1..=homeland_square_size).contains(&to_pos_y)
-                        {
-                            let to = CellIndex::Homeland {
-                                homeland,
-                                pos: (to_pos_x, to_pos_y).into(),
-                            };
-                            Self::append_edge_c(
-                                &mut const_edges,
-                                from,
-                                to,
-                                &EdgeCost::StandardMove,
-                            );
-                        }
-                    }
-                }
-            }
-        }
-        // process borders
-        for i in 1..=homeland_square_size {
-            fn process_border(
-                const_edges: &mut Edges,
-                border: Border,
-                homelands: [Homeland; 2],
-                i: usize,
-                pos: Pos,
-            ) {
-                let from = CellIndex::Border {
-                    border,
-                    shift: i as u8,
-                };
-                for homeland in homelands {
-                    let to = CellIndex::Homeland { homeland, pos };
-                    Graph::append_edge_undirected_c(const_edges, from, to, &EdgeCost::StandardMove);
-                }
-            }
-
-            Border::iter().for_each(|border| {
-                let pos = match border.direction() {
-                    BorderDirection::Vertical => (1, i),
-                    BorderDirection::Horizontal => (i, 1),
-                }
-                .into();
-                process_border(&mut const_edges, border, border.neighbours(), i, pos);
-            });
-        }
-        for border in Border::iter() {
-            for i in 1..homeland_square_size {
-                let i = i as u8;
-                Graph::append_edge_undirected_c(
-                    &mut const_edges,
-                    CellIndex::Border { border, shift: i },
-                    CellIndex::Border {
-                        border,
-                        shift: i + 1,
-                    },
-                    &EdgeCost::StandardMove,
-                );
-            }
-        }
-
-        //process center
-        for border in Border::iter() {
-            let vertex = CellIndex::Border { border, shift: 1 };
-            Self::append_edge_undirected_c(
-                &mut const_edges,
-                CellIndex::Center,
-                vertex,
-                &EdgeCost::CentralMove,
-            );
-        }
-        // process caravans to center
-        for homeland in Homeland::iter() {
-            if let Some(i) = grid.poi.get(&PoI::Campfire(homeland)) {
-                Self::append_edge_c(
-                    &mut const_edges,
-                    grid.grid[*i].index,
-                    CellIndex::Center,
-                    CARAVAN_CAMPFIRE_CENTER,
-                );
-            }
-        }
-        for val in const_edges.values_mut() {
-            val.shrink_to_fit();
-            for val in val.values_mut() {
-                val.shrink_to_fit();
-            }
-        }
-        Graph {
-            const_edges,
-            ..Graph::default()
-        }
-    }
-
-    pub fn init_dynamic(&mut self, grid: &MapGrid, homeland: Homeland) {
-        self.dyn_edges.clear();
-
-        let [neighbour1, neighbour2] = homeland.neighbours().map(|neighbour| {
-            grid.poi
-                .get(&PoI::Campfire(neighbour))
-                .map(|neighbour_i| grid.grid[*neighbour_i].index)
-        });
-        let farland = grid
-            .poi
-            .get(&PoI::Campfire(homeland.farland()))
-            .map(|farland_i| grid.grid[*farland_i].index);
-
-        if let Some(homeland) = grid
-            .poi
-            .get(&PoI::Campfire(homeland))
-            .map(|homeland_i| grid.grid[*homeland_i].index)
-        {
-            // scroll of escape
-            grid.grid
-                .iter()
-                .map(|cell| cell.index)
-                .filter(|any_cell| any_cell != &homeland)
-                .for_each(|any_cell| {
-                    Self::append_edge_d(
-                        &mut self.dyn_edges,
-                        any_cell,
-                        homeland,
-                        &EdgeCost::ScrollOfEscape,
-                    );
-                });
-            // caravans
-            Self::append_edge_d(
-                &mut self.dyn_edges,
-                CellIndex::Center,
-                homeland,
-                CARAVAN_CENTER_HOMELAND,
-            );
-
-            [neighbour1, neighbour2]
-                .into_iter()
-                .flatten()
-                .for_each(|neighbour| {
-                    Self::append_edge_d(
-                        &mut self.dyn_edges,
-                        homeland,
-                        neighbour,
-                        CARAVAN_HOMELAND_NEIGHBOUR,
-                    );
-                    Self::append_edge_d(
-                        &mut self.dyn_edges,
-                        neighbour,
-                        homeland,
-                        CARAVAN_NEIGHBOUR_HOMELAND,
-                    );
-                });
-            if let Some(farland) = farland {
-                Self::append_edge_d(
-                    &mut self.dyn_edges,
-                    homeland,
-                    farland,
-                    CARAVAN_HOMELAND_FARLAND,
-                );
-                Self::append_edge_d(
-                    &mut self.dyn_edges,
-                    farland,
-                    homeland,
-                    CARAVAN_FARLAND_HOMELAND,
-                );
-            }
-        }
-        [neighbour1, neighbour2]
-            .into_iter()
-            .flatten()
-            .for_each(|neighbour| {
-                if let Some(farland) = farland {
-                    Self::append_edge_undirected_d(
-                        &mut self.dyn_edges,
-                        neighbour,
-                        farland,
-                        CARAVAN_NEIGHBOUR_FARLAND,
-                    );
-                }
-            });
-        if let Some((neighbour1, neighbour2)) = neighbour1.zip(neighbour2) {
-            Self::append_edge_undirected_d(
-                &mut self.dyn_edges,
-                neighbour1,
-                neighbour2,
-                CARAVAN_NEIGHBOUR_NEIGHBOUR,
-            );
-        }
-        [neighbour1, neighbour2]
-            .into_iter()
-            .flatten()
-            .chain(farland)
-            .for_each(|enemy| {
-                Self::append_edge_d(
-                    &mut self.dyn_edges,
-                    CellIndex::Center,
-                    enemy,
-                    CARAVAN_CENTER_ENEMY,
-                );
-            });
-
-        self.dyn_edges.shrink_to_fit();
-        for val in self.dyn_edges.values_mut() {
-            val.shrink_to_fit();
-            for val in val.values_mut() {
-                val.shrink_to_fit();
-            }
-        }
-    }
-
-    fn inflight_edges(
-        &self,
-        grid: &MapGrid,
-        homeland: Homeland,
-        scroll_of_escape_cost: u32,
-        vertex: CellIndex,
-    ) -> HashMap<CellIndex, SmallVec<[EdgeCostRef; 4]>> {
-        let mut ret: HashMap<_, SmallVec<_>> = HashMap::new();
-        match vertex {
-            CellIndex::Center => {
-                ret.reserve(Border::count() + homeland.neighbours().len() + 1);
-                // 4
-                for border in Border::iter() {
-                    ret.entry(CellIndex::Border { border, shift: 1 })
-                        .or_default()
-                        .push(&EdgeCost::CentralMove);
-                }
-                // 3
-                for enemy in homeland
+fn inflight_edges(
+    grid: &MapGrid,
+    homeland: Homeland,
+    vertex: CellIndex,
+) -> ArrayVec<(CellIndex, EdgeCostRef), 9> {
+    let mut ret = ArrayVec::new();
+    let homeland_size = grid.homeland_size();
+    match vertex {
+        CellIndex::Center => {
+            // 4
+            ret.extend(Border::iter().map(|border| {
+                (
+                    CellIndex::Border { border, shift: 1 },
+                    &EdgeCost::CentralMove,
+                )
+            }));
+            // 3
+            ret.extend(
+                homeland
                     .neighbours()
                     .into_iter()
                     .chain(iter::once(homeland.farland()))
-                    .map(|enemy| grid.grid[grid.poi[&PoI::Campfire(enemy)]].index)
-                {
-                    ret.entry(enemy).or_default().push(CARAVAN_CENTER_ENEMY);
-                }
+                    .map(|enemy| {
+                        (
+                            grid.grid[grid.poi[&PoI::Campfire(enemy)]].index,
+                            CARAVAN_CENTER_ENEMY,
+                        )
+                    }),
+            );
+            // 1
+            ret.push((
+                grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
+                CARAVAN_CENTER_HOMELAND,
+            ));
+        }
+        CellIndex::Border { border, shift } => {
+            // 1
+            ret.push(if shift == 1 {
+                (CellIndex::Center, &EdgeCost::CentralMove)
+            } else {
+                (
+                    CellIndex::Border {
+                        border,
+                        shift: shift - 1,
+                    },
+                    &EdgeCost::StandardMove,
+                )
+            });
+            // 0..1
+            if (shift as usize) < homeland_size {
+                ret.push((
+                    CellIndex::Border {
+                        border,
+                        shift: shift + 1,
+                    },
+                    &EdgeCost::StandardMove,
+                ));
+            }
+            // 2
+            ret.extend(border.neighbours().map(|neighbour| {
+                (
+                    CellIndex::Homeland {
+                        homeland: neighbour,
+                        pos: border.direction().adjacent_pos_u8(shift),
+                    },
+                    &EdgeCost::StandardMove,
+                )
+            }));
+        }
+        CellIndex::Homeland {
+            homeland: vertex_homeland,
+            pos: Pos { x, y },
+        } => {
+            // 1
+            ret.push((
+                if x == 1 {
+                    CellIndex::Border {
+                        border: vertex_homeland.neighbour(BorderDirection::Vertical),
+                        shift: y,
+                    }
+                } else {
+                    CellIndex::Homeland {
+                        homeland: vertex_homeland,
+                        pos: Pos { x: x - 1, y },
+                    }
+                },
+                &EdgeCost::StandardMove,
+            ));
+            // 1
+            ret.push((
+                if y == 1 {
+                    CellIndex::Border {
+                        border: vertex_homeland.neighbour(BorderDirection::Horizontal),
+                        shift: x,
+                    }
+                } else {
+                    CellIndex::Homeland {
+                        homeland: vertex_homeland,
+                        pos: Pos { x, y: y - 1 },
+                    }
+                },
+                &EdgeCost::StandardMove,
+            ));
+            // 0..1
+            if (x as usize) < grid.homeland_size() {
+                ret.push((
+                    CellIndex::Homeland {
+                        homeland: vertex_homeland,
+                        pos: Pos { x: x + 1, y },
+                    },
+                    &EdgeCost::StandardMove,
+                ));
+            }
+            // 0..1
+            if (y as usize) < grid.homeland_size() {
+                ret.push((
+                    CellIndex::Homeland {
+                        homeland: vertex_homeland,
+                        pos: Pos { x, y: y + 1 },
+                    },
+                    &EdgeCost::StandardMove,
+                ));
+            }
+            if let Some(PoI::Campfire(campfire)) = grid.grid[grid.index[&vertex]].poi {
                 // 1
-                ret.entry(grid.grid[grid.poi[&PoI::Campfire(homeland)]].index)
-                    .or_default()
-                    .push(CARAVAN_CENTER_HOMELAND);
-            }
-            CellIndex::Border { .. } => {}
-            CellIndex::Homeland { .. } => {}
-        }
-        // 1
-        if grid.grid[grid.poi[&PoI::Campfire(homeland)]].index != vertex {
-            ret.entry(vertex)
-                .or_default()
-                .push(&EdgeCost::ScrollOfEscape);
-        }
-        ret
-    }
-
-    pub fn find_path(
-        &self,
-        scroll_of_escape_cost: u32,
-        from: CellIndex,
-        to: CellIndex,
-        (c1, c2): (CostComparator, CostComparator),
-    ) -> Option<TotalCost> {
-        if from == to {
-            return Some(TotalCost::new(from));
-        }
-        let mut dist: HashMap<_, _> = HashMap::new();
-        let comparator = c1.and_then(c2);
-        let mut heap: BinaryHeap<_, _> = BinaryHeap::new_by(|a, b| comparator(b, a));
-        dist.insert(from, TotalCost::new(from));
-        heap.push(TotalCost::new(from));
-        while let Some(cost) = heap.pop() {
-            let lowest_cost_index = cost.commands.last().unwrap().to;
-            if lowest_cost_index == to {
-                return Some(cost);
-            }
-            if comparator(&cost, &dist[&lowest_cost_index]).is_gt() {
-                continue;
-            }
-            for (edge_index, edge_cost) in self
-                .const_edges
-                .get(&lowest_cost_index)
-                .iter()
-                .chain(self.dyn_edges.get(&lowest_cost_index).iter())
-                .copied()
-                .flatten()
-                .flat_map(|(&next, next_cost)| {
-                    next_cost.iter().map(move |&next_cost| (next, next_cost))
-                })
-            {
-                let next = &cost
-                    + (
-                        edge_cost,
-                        scroll_of_escape_cost,
-                        lowest_cost_index,
-                        edge_index,
-                    );
-                if dist
-                    .get(&edge_index)
-                    .map_or(true, |old_cost| comparator(&next, old_cost).is_lt())
-                {
-                    heap.push(next.clone());
-                    dist.insert(edge_index, next);
+                ret.push((CellIndex::Center, CARAVAN_CAMPFIRE_CENTER));
+                fn add_neighbour_paths(
+                    arr: &mut ArrayVec<(CellIndex, EdgeCostRef), 9>,
+                    grid: &MapGrid,
+                    campfire: Homeland,
+                    edge_cost: EdgeCostRef,
+                ) {
+                    arr.extend(campfire.neighbours().into_iter().map(|neighbour_campfire| {
+                        (
+                            grid.grid[grid.poi[&PoI::Campfire(neighbour_campfire)]].index,
+                            edge_cost,
+                        )
+                    }));
+                }
+                if campfire == homeland {
+                    // 1
+                    ret.push((
+                        grid.grid[grid.poi[&PoI::Campfire(campfire.farland())]].index,
+                        CARAVAN_HOMELAND_FARLAND,
+                    ));
+                    // 2
+                    add_neighbour_paths(&mut ret, grid, campfire, CARAVAN_HOMELAND_NEIGHBOUR);
+                } else if campfire == homeland.farland() {
+                    // 1
+                    ret.push((
+                        grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
+                        CARAVAN_FARLAND_HOMELAND,
+                    ));
+                    // 2
+                    add_neighbour_paths(&mut ret, grid, campfire, CARAVAN_FARLAND_NEIGHBOUR);
+                } else {
+                    // 1
+                    ret.push((
+                        grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
+                        CARAVAN_NEIGHBOUR_HOMELAND,
+                    ));
+                    // 1
+                    ret.push((
+                        grid.grid[grid.poi[&PoI::Campfire(campfire.farland())]].index,
+                        CARAVAN_NEIGHBOUR_NEIGHBOUR,
+                    ));
+                    // 1
+                    ret.push((
+                        grid.grid[grid.poi[&PoI::Campfire(homeland.farland())]].index,
+                        CARAVAN_NEIGHBOUR_FARLAND,
+                    ));
                 }
             }
         }
-        None
     }
+    // 0..1
+    let homeland_campfire = grid.grid[grid.poi[&PoI::Campfire(homeland)]].index;
+    if homeland_campfire != vertex {
+        ret.push((homeland_campfire, &EdgeCost::ScrollOfEscape));
+    }
+    ret
+}
 
-    append_edge!(append_edge_c, append_edge_undirected_c);
-
-    append_edge!(append_edge_d, append_edge_undirected_d);
+pub fn find_path(
+    grid: &MapGrid,
+    homeland: Homeland,
+    scroll_of_escape_cost: u32,
+    from: CellIndex,
+    to: CellIndex,
+    (c1, c2): (CostComparator, CostComparator),
+) -> Option<TotalCost> {
+    if from == to {
+        return Some(TotalCost::new(from));
+    }
+    let mut dist: HashMap<_, _> = HashMap::new();
+    let comparator = c1.and_then(c2);
+    let mut heap: BinaryHeap<_, _> = BinaryHeap::new_by(|a, b| comparator(b, a));
+    dist.insert(from, TotalCost::new(from));
+    heap.push(TotalCost::new(from));
+    while let Some(cost) = heap.pop() {
+        let lowest_cost_index = cost.commands.last().unwrap().to;
+        if lowest_cost_index == to {
+            return Some(cost);
+        }
+        if comparator(&cost, &dist[&lowest_cost_index]).is_gt() {
+            continue;
+        }
+        for (edge_index, edge_cost) in inflight_edges(grid, homeland, lowest_cost_index) {
+            let next = &cost
+                + (
+                    edge_cost,
+                    scroll_of_escape_cost,
+                    lowest_cost_index,
+                    edge_index,
+                );
+            if dist
+                .get(&edge_index)
+                .map_or(true, |old_cost| comparator(&next, old_cost).is_lt())
+            {
+                heap.push(next.clone());
+                dist.insert(edge_index, next);
+            }
+        }
+    }
+    None
 }
 
 #[cfg(test)]

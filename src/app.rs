@@ -4,7 +4,7 @@ use crate::emoji::EmojiMap;
 use crate::grid::{arrow, MapGrid, MapGridResponse};
 use crate::homeland::Homeland;
 use crate::index::CellIndex;
-use crate::pathfinder::Graph;
+use crate::pathfinder::find_path;
 use eframe::emath::Align;
 use egui::load::BytesPoll;
 use egui::{
@@ -14,7 +14,6 @@ use egui::{
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cell::OnceCell;
-use std::sync::{Arc, RwLock};
 use strum::IntoEnumIterator;
 
 #[derive(Deserialize, Serialize)]
@@ -25,14 +24,12 @@ pub struct MarshrutkaApp {
     show_settings: bool,
     show_about: bool,
     #[serde(skip)]
-    grid: Option<Arc<MapGrid>>,
+    grid: Option<MapGrid>,
     from: Option<CellIndex>,
     to: Option<CellIndex>,
     homeland: Homeland,
     #[serde(skip)]
     need_to_save: bool,
-    #[serde(skip)]
-    graph: Option<Arc<RwLock<Graph>>>,
     sort_by: (CostComparator, CostComparator),
 }
 
@@ -67,7 +64,7 @@ impl MarshrutkaApp {
         result
     }
 
-    fn emojis(&mut self, ctx: &egui::Context) -> &EmojiMap {
+    fn emojis(&self, ctx: &'_ egui::Context) -> &EmojiMap {
         self.emojis.get_or_init(|| EmojiMap::new(ctx))
     }
 
@@ -174,15 +171,6 @@ impl MarshrutkaApp {
                     })
             });
     }
-
-    fn eval_dyn_graph(&mut self) {
-        let grid = self.grid.clone().unwrap();
-        let graph = self.graph.clone().unwrap();
-        {
-            let mut graph = graph.write().unwrap();
-            graph.init_dynamic(grid.as_ref(), self.homeland);
-        }
-    }
 }
 
 impl eframe::App for MarshrutkaApp {
@@ -206,11 +194,7 @@ impl eframe::App for MarshrutkaApp {
         if self.grid.is_none() {
             match MapGrid::parse(s.as_ref()) {
                 Ok(grid) => {
-                    self.grid = Some(Arc::new(grid));
-                    self.graph = Some(Arc::new(RwLock::new(Graph::new(
-                        self.grid.as_ref().unwrap().as_ref(),
-                    ))));
-                    self.eval_dyn_graph();
+                    self.grid = Some(grid);
                 }
                 Err(err) => {
                     egui::CentralPanel::default()
@@ -224,9 +208,6 @@ impl eframe::App for MarshrutkaApp {
 
         self.settings(ctx);
         self.about(ctx);
-
-        let grid = self.grid.clone().unwrap();
-        let graph = self.graph.clone().unwrap();
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
@@ -249,7 +230,10 @@ impl eframe::App for MarshrutkaApp {
                                 },
                             response,
                         } = ScrollArea::both()
-                            .show(ui, |ui| grid.ui_content(ui, self.emojis(ui.ctx())))
+                            .show(ui, |ui| {
+                                let emojis = self.emojis(ui.ctx());
+                                self.grid.as_ref().unwrap().ui_content(ui, emojis)
+                            })
                             .inner;
                         if let Some(from) = from {
                             self.from = Some(from);
@@ -263,10 +247,16 @@ impl eframe::App for MarshrutkaApp {
                     })
                     .body_returned;
                 let path = {
-                    let graph = graph.read().unwrap();
                     ui.separator();
                     self.from.zip(self.to).and_then(|(from, to)| {
-                        let path = graph.find_path(50, from, to, self.sort_by);
+                        let path = find_path(
+                            self.grid.as_ref().unwrap(),
+                            self.homeland,
+                            50,
+                            from,
+                            to,
+                            self.sort_by,
+                        );
                         ui.label(format!("{:#?}", path));
                         path
                     })
@@ -297,7 +287,6 @@ impl eframe::App for MarshrutkaApp {
                 self.save(storage);
             }
             self.need_to_save = false;
-            self.eval_dyn_graph();
             ctx.request_repaint();
         }
     }
@@ -319,7 +308,6 @@ impl Default for MarshrutkaApp {
             to: Default::default(),
             homeland: Default::default(),
             need_to_save: Default::default(),
-            graph: Default::default(),
             sort_by: (CostComparator::Legs, CostComparator::Money),
         }
     }

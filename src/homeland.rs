@@ -1,8 +1,9 @@
 use crate::emoji::EmojiCode;
+use crate::index::{Border, BorderDirection};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
-use strum::EnumIter;
+use strum::{EnumIter, IntoStaticStr};
 
 #[derive(
     Deserialize,
@@ -17,6 +18,7 @@ use strum::EnumIter;
     EnumIter,
     Ord,
     PartialOrd,
+    IntoStaticStr,
 )]
 pub enum Homeland {
     #[default]
@@ -27,13 +29,8 @@ pub enum Homeland {
 }
 
 impl Homeland {
-    pub const fn name(&self) -> &'static str {
-        match self {
-            Homeland::Blue => "Blue",
-            Homeland::Red => "Red",
-            Homeland::Green => "Green",
-            Homeland::Yellow => "Yellow",
-        }
+    pub fn name(&self) -> &'static str {
+        self.into()
     }
 
     pub const fn as_abbrev(&self) -> char {
@@ -51,6 +48,19 @@ impl Homeland {
             Homeland::Red => [Homeland::Blue, Homeland::Green],
             Homeland::Green => [Homeland::Red, Homeland::Yellow],
             Homeland::Yellow => [Homeland::Blue, Homeland::Green],
+        }
+    }
+
+    pub const fn neighbour(&self, border_direction: BorderDirection) -> Border {
+        match (self, border_direction) {
+            (Homeland::Blue, BorderDirection::Horizontal) => Border::BR,
+            (Homeland::Blue, BorderDirection::Vertical) => Border::YB,
+            (Homeland::Red, BorderDirection::Horizontal) => Border::BR,
+            (Homeland::Red, BorderDirection::Vertical) => Border::RG,
+            (Homeland::Green, BorderDirection::Horizontal) => Border::GY,
+            (Homeland::Green, BorderDirection::Vertical) => Border::RG,
+            (Homeland::Yellow, BorderDirection::Horizontal) => Border::GY,
+            (Homeland::Yellow, BorderDirection::Vertical) => Border::YB,
         }
     }
 

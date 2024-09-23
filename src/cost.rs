@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign};
-use strum::EnumIter;
+use strum::{EnumIter, IntoStaticStr};
 use time::Duration;
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
@@ -42,7 +42,7 @@ impl EdgeCost {
     }
 }
 
-#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, EnumIter)]
+#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, EnumIter, IntoStaticStr)]
 pub enum CostComparator {
     Legs,
     Time,
@@ -114,6 +114,7 @@ pub const CARAVAN_HOMELAND_NEIGHBOUR: &EdgeCost = &CARAVAN_30_24;
 pub const CARAVAN_HOMELAND_FARLAND: &EdgeCost = &CARAVAN_60_48;
 pub const CARAVAN_FARLAND_HOMELAND: &EdgeCost = &CARAVAN_24_48;
 pub const CARAVAN_NEIGHBOUR_FARLAND: &EdgeCost = &CARAVAN_30_24;
+pub const CARAVAN_FARLAND_NEIGHBOUR: &EdgeCost = &CARAVAN_30_24;
 pub const CARAVAN_NEIGHBOUR_NEIGHBOUR: &EdgeCost = &CARAVAN_60_48;
 
 impl TotalCost {
@@ -210,12 +211,8 @@ impl CostComparator {
         )
     }
 
-    pub const fn as_str(&self) -> &str {
-        match self {
-            CostComparator::Legs => "Legs",
-            CostComparator::Time => "Time",
-            CostComparator::Money => "Money",
-        }
+    pub fn as_str(&self) -> &'static str {
+        self.into()
     }
 
     pub fn and_then(&self, c2: CostComparator) -> impl Fn(&TotalCost, &TotalCost) -> Ordering {
