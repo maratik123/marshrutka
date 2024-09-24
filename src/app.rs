@@ -345,8 +345,7 @@ impl MarshrutkaApp {
                                         .ui(ui);
                                         let command_time = command.aggregated_cost.time();
                                         ui.label(command_time.to_string());
-                                        total_time += command_time;
-                                        total_time += pause_between_steps;
+                                        total_time += command_time + pause_between_steps;
                                         ui.label(total_time.to_string());
                                         ui.label(time.format(&time_format).unwrap());
                                         ui.end_row();
