@@ -128,8 +128,7 @@ impl MapGrid {
                         let center = ScrollArea::both()
                             .id_source(i)
                             .show(ui, |ui| {
-                                let (center, new_left, new_right) =
-                                    cell.ui_content(ui, emoji_map, || self.grid[i].index);
+                                let (center, new_left, new_right) = cell.ui_content(ui, emoji_map);
                                 if new_left.is_some() {
                                     left = new_left;
                                 }

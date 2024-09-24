@@ -52,12 +52,11 @@ impl TryFrom<&str> for CellElement {
 }
 
 impl Cell {
-    pub fn ui_content<T>(
+    pub fn ui_content(
         &self,
         ui: &mut Ui,
         emoji_map: &EmojiMap,
-        mut cell_name: impl FnMut() -> T,
-    ) -> (Pos2, Option<T>, Option<T>) {
+    ) -> (Pos2, Option<CellIndex>, Option<CellIndex>) {
         let (response, painter) = ui.allocate_painter(Vec2::splat(CELL_SIZE), Sense::click());
         let rect = response.rect - Margin::same(CELL_MARGIN);
         if let Some(bg_color) = self.bg_color {
@@ -88,12 +87,12 @@ impl Cell {
         (
             rect.center(),
             if response.clicked() {
-                Some(cell_name())
+                Some(self.index)
             } else {
                 None
             },
             if response.secondary_clicked() {
-                Some(cell_name())
+                Some(self.index)
             } else {
                 None
             },

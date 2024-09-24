@@ -1,7 +1,7 @@
 use crate::consts::{
     BLEACH_ALPHA, CELL_SIZE, FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE,
 };
-use crate::cost::{Command, CostComparator, EdgeCost};
+use crate::cost::{AggregatedCost, Command, CostComparator, TotalCost};
 use crate::emoji::EmojiMap;
 use crate::grid::{arrow, MapGrid, MapGridResponse};
 use crate::homeland::Homeland;
@@ -11,8 +11,8 @@ use eframe::emath::Align;
 use egui::emath::Rot2;
 use egui::load::BytesPoll;
 use egui::{
-    vec2, Color32, FontId, Image, ImageButton, InnerResponse, Layout, ScrollArea, TextStyle, Ui,
-    Visuals, Widget,
+    Color32, FontId, Image, ImageButton, InnerResponse, Layout, ScrollArea, TextStyle, Ui, Visuals,
+    Widget,
 };
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -107,7 +107,7 @@ impl MarshrutkaApp {
                 ui.separator();
                 ui.label("Your homeland: ");
                 let emoji_code = &self.homeland.into();
-                if let Some(flag) = self.emojis(ctx).get_texture(emoji_code) {
+                if let Some(flag) = self.emojis(ui.ctx()).get_texture(emoji_code) {
                     if ImageButton::new(Image::new(&flag.corner).shrink_to_fit())
                         .ui(ui)
                         .clicked()
@@ -116,24 +116,26 @@ impl MarshrutkaApp {
                     }
                 }
                 ui.separator();
-                ui.label("Sort by");
-                let mut sort_selector = |ui: &mut Ui, label, val: &mut CostComparator| {
-                    egui::ComboBox::from_id_source(label)
-                        .width(0.0)
-                        .selected_text(val.as_str())
-                        .show_ui(ui, |ui| {
-                            for sort in CostComparator::iter() {
-                                if ui.selectable_value(val, sort, sort.as_str()).changed() {
-                                    self.need_to_save = true;
+                ScrollArea::horizontal().show(ui, |ui| {
+                    ui.label("Sort by");
+                    let mut sort_selector = |ui: &mut Ui, label, val: &mut CostComparator| {
+                        egui::ComboBox::from_id_source(label)
+                            .width(0.0)
+                            .selected_text(val.as_str())
+                            .show_ui(ui, |ui| {
+                                for sort in CostComparator::iter() {
+                                    if ui.selectable_value(val, sort, sort.as_str()).changed() {
+                                        self.need_to_save = true;
+                                    }
                                 }
-                            }
-                        })
-                        .response
-                        .on_hover_text(label);
-                };
-                sort_selector(ui, "Sort by", &mut self.sort_by.0);
-                ui.label("and then by");
-                sort_selector(ui, "Then sort by", &mut self.sort_by.1);
+                            })
+                            .response
+                            .on_hover_text(label);
+                    };
+                    sort_selector(ui, "Sort by", &mut self.sort_by.0);
+                    ui.label("and then by");
+                    sort_selector(ui, "Then sort by", &mut self.sort_by.1);
+                });
             });
         });
     }
@@ -165,7 +167,7 @@ impl MarshrutkaApp {
             .open(&mut self.show_settings)
             .show(ctx, |ui| {
                 ui.vertical(|ui| {
-                    ui.spacing_mut().item_spacing = vec2(40.0, 8.0);
+                    ui.spacing_mut().item_spacing.y = 8.0;
                     egui::ComboBox::from_label("Select your homeland")
                         .selected_text(self.homeland.name())
                         .show_ui(ui, |ui| {
@@ -200,6 +202,143 @@ impl MarshrutkaApp {
                     });
                 });
             });
+    }
+
+    fn commands(&mut self, ctx: &egui::Context, path: &Option<TotalCost>) {
+        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
+            if let Some(path) = path {
+                if !path.commands.is_empty()
+                    && !matches!(
+                        &path.commands[..],
+                        [Command {
+                            aggregated_cost: AggregatedCost::NoMove,
+                            ..
+                        }]
+                    )
+                {
+                    let response = ui.collapsing("Commands", |ui| {
+                        ui.horizontal(|ui| {
+                            fn show_item(
+                                s: &MarshrutkaApp,
+                                ui: &mut Ui,
+                                ch: char,
+                                val: impl Display,
+                            ) {
+                                ui.scope(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 4.0;
+                                    ui.label(val.to_string());
+                                    Image::new(
+                                        &s.emojis(ui.ctx()).get_texture(&ch.into()).unwrap().corner,
+                                    )
+                                    .max_height(ui.text_style_height(&TextStyle::Body))
+                                    .ui(ui);
+                                });
+                            }
+                            show_item(self, ui, '\u{1f463}', path.legs);
+                            show_item(self, ui, '\u{23f0}', path.time);
+                            show_item(self, ui, '\u{1fa99}', path.money);
+                            ui.label("Arrive at:");
+
+                            let mut hr = self.arrive_at.hour();
+                            if egui::DragValue::new(&mut hr)
+                                .clamp_to_range(true)
+                                .range(0..=23)
+                                .ui(ui)
+                                .changed()
+                            {
+                                self.arrive_at = self.arrive_at.replace_hour(hr).unwrap();
+                                self.need_to_save = true;
+                            }
+                            ui.label("h");
+                            let mut mi = self.arrive_at.minute();
+                            if egui::DragValue::new(&mut mi)
+                                .clamp_to_range(true)
+                                .range(0..=59)
+                                .ui(ui)
+                                .changed()
+                            {
+                                self.arrive_at = self.arrive_at.replace_minute(mi).unwrap();
+                                self.need_to_save = true;
+                            }
+                            ui.label("m");
+                            let mut sec = self.arrive_at.second();
+                            if egui::DragValue::new(&mut sec)
+                                .clamp_to_range(true)
+                                .range(0..=59)
+                                .ui(ui)
+                                .changed()
+                            {
+                                self.arrive_at = self.arrive_at.replace_second(sec).unwrap();
+                                self.need_to_save = true;
+                            }
+                            ui.label("s");
+                        });
+
+                        egui::Grid::new("Commands").striped(true).show(ui, |ui| {
+                            ui.label("Command");
+                            ui.label("Duration");
+                            ui.label("Total time");
+                            ui.label("Schedule at");
+                            ui.end_row();
+                            let mut total_time = Duration::ZERO;
+                            let commands: Vec<_> = path
+                                .commands
+                                .iter()
+                                .filter(|command| {
+                                    !matches!(
+                                        command,
+                                        Command {
+                                            aggregated_cost: AggregatedCost::NoMove,
+                                            ..
+                                        }
+                                    )
+                                })
+                                .copied()
+                                .collect();
+                            let pause_between_steps =
+                                Duration::seconds(self.pause_between_steps as i64);
+                            let times: Vec<_> = commands
+                                .iter()
+                                .rev()
+                                .scan(self.arrive_at + pause_between_steps, |acc, command| {
+                                    *acc -= command.aggregated_cost.time() + pause_between_steps;
+                                    Some(*acc)
+                                })
+                                .collect();
+                            let time_format = format_description!("[hour]:[minute]:[second]");
+                            for (command, time) in iter::zip(commands, times.into_iter().rev()) {
+                                let command_str = match command.aggregated_cost {
+                                    AggregatedCost::NoMove => continue,
+                                    AggregatedCost::CentralMove { .. }
+                                    | AggregatedCost::StandardMove { .. } => {
+                                        format!("/go_direct_{}", CellIndexCommandSuffix(command.to))
+                                    }
+                                    AggregatedCost::Caravan { .. } => {
+                                        format!("/car_{}", CellIndexCommandSuffix(command.to))
+                                    }
+                                    AggregatedCost::ScrollOfEscape { .. } => "/use_soe".to_string(),
+                                };
+                                egui::Hyperlink::from_label_and_url(
+                                    &command_str,
+                                    format!("https://t.me/share/url?url={command_str}"),
+                                )
+                                .open_in_new_tab(true)
+                                .ui(ui);
+                                let command_time = command.aggregated_cost.time();
+                                ui.label(command_time.to_string());
+                                total_time += command_time;
+                                ui.label(total_time.to_string());
+                                ui.label(time.format(&time_format).unwrap());
+                                ui.end_row();
+                            }
+                        });
+                    });
+                    if response.fully_closed() || response.fully_open() {
+                        self.need_to_save = true;
+                    }
+                }
+            }
+        });
     }
 }
 
@@ -238,7 +377,23 @@ impl eframe::App for MarshrutkaApp {
             };
         }
 
+        let path = {
+            self.from.zip(self.to).and_then(|(from, to)| {
+                find_path(
+                    self.grid.as_ref().unwrap(),
+                    self.homeland,
+                    self.scroll_of_escape_cost,
+                    (from, to),
+                    self.sort_by,
+                    self.use_soe,
+                    self.use_caravans,
+                )
+            })
+        };
+
         self.top_menu(ctx);
+
+        self.commands(ctx, &path);
 
         self.settings(ctx);
         self.about(ctx);
@@ -262,20 +417,7 @@ impl eframe::App for MarshrutkaApp {
                 }
             });
 
-            let path = {
-                ui.separator();
-                self.from.zip(self.to).and_then(|(from, to)| {
-                    find_path(
-                        self.grid.as_ref().unwrap(),
-                        self.homeland,
-                        self.scroll_of_escape_cost,
-                        (from, to),
-                        self.sort_by,
-                        self.use_soe,
-                        self.use_caravans,
-                    )
-                })
-            };
+            ui.separator();
 
             ScrollArea::both().show(ui, |ui| {
                 let grid_response = ui.collapsing(
@@ -325,147 +467,15 @@ impl eframe::App for MarshrutkaApp {
                             tip_length,
                             centers[&command.from],
                             centers[&command.to],
-                            match command.edge_cost {
-                                EdgeCost::NoMove => continue,
-                                EdgeCost::CentralMove => Color32::RED,
-                                EdgeCost::StandardMove => Color32::BLUE,
-                                EdgeCost::Caravan { .. } => Color32::GREEN,
-                                EdgeCost::ScrollOfEscape => Color32::BROWN,
+                            match command.aggregated_cost {
+                                AggregatedCost::NoMove => continue,
+                                AggregatedCost::CentralMove { .. } => Color32::RED,
+                                AggregatedCost::StandardMove { .. } => Color32::BLUE,
+                                AggregatedCost::Caravan { .. } => Color32::GREEN,
+                                AggregatedCost::ScrollOfEscape { .. } => Color32::BROWN,
                             }
                             .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),
                         );
-                    }
-                }
-                if let Some(path) = path {
-                    if !path.commands.is_empty()
-                        && !matches!(
-                            &path.commands[..],
-                            [Command {
-                                edge_cost: EdgeCost::NoMove,
-                                ..
-                            }]
-                        )
-                    {
-                        let response = ui.collapsing("Commands", |ui| {
-                            ui.horizontal(|ui| {
-                                fn show_item(
-                                    s: &MarshrutkaApp,
-                                    ui: &mut Ui,
-                                    ch: char,
-                                    val: impl Display,
-                                ) {
-                                    Image::new(
-                                        &s.emojis(ui.ctx()).get_texture(&ch.into()).unwrap().corner,
-                                    )
-                                    .max_height(ui.text_style_height(&TextStyle::Body))
-                                    .ui(ui);
-                                    ui.label(format!(": {}", val));
-                                }
-                                show_item(self, ui, '\u{1f463}', path.legs);
-                                show_item(self, ui, '\u{23f0}', path.time);
-                                show_item(self, ui, '\u{1fa99}', path.money);
-                                ui.label("Arrive at:");
-
-                                let mut hr = self.arrive_at.hour();
-                                if egui::DragValue::new(&mut hr)
-                                    .clamp_to_range(true)
-                                    .range(0..=23)
-                                    .ui(ui)
-                                    .changed()
-                                {
-                                    self.arrive_at = self.arrive_at.replace_hour(hr).unwrap();
-                                    self.need_to_save = true;
-                                }
-                                ui.label("h");
-                                let mut mi = self.arrive_at.minute();
-                                if egui::DragValue::new(&mut mi)
-                                    .clamp_to_range(true)
-                                    .range(0..=59)
-                                    .ui(ui)
-                                    .changed()
-                                {
-                                    self.arrive_at = self.arrive_at.replace_minute(mi).unwrap();
-                                    self.need_to_save = true;
-                                }
-                                ui.label("m");
-                                let mut sec = self.arrive_at.second();
-                                if egui::DragValue::new(&mut sec)
-                                    .clamp_to_range(true)
-                                    .range(0..=59)
-                                    .ui(ui)
-                                    .changed()
-                                {
-                                    self.arrive_at = self.arrive_at.replace_second(sec).unwrap();
-                                    self.need_to_save = true;
-                                }
-                                ui.label("s");
-                            });
-
-                            egui::Grid::new("Commands").striped(true).show(ui, |ui| {
-                                ui.label("Command");
-                                ui.label("Duration");
-                                ui.label("Total time");
-                                ui.label("Schedule at");
-                                ui.end_row();
-                                let mut total_time = Duration::ZERO;
-                                let commands: Vec<_> = path
-                                    .commands
-                                    .iter()
-                                    .filter(|command| {
-                                        !matches!(
-                                            command,
-                                            Command {
-                                                edge_cost: EdgeCost::NoMove,
-                                                ..
-                                            }
-                                        )
-                                    })
-                                    .copied()
-                                    .collect();
-                                let pause_between_steps =
-                                    Duration::seconds(self.pause_between_steps as i64);
-                                let times: Vec<_> = commands
-                                    .iter()
-                                    .rev()
-                                    .scan(self.arrive_at + pause_between_steps, |acc, command| {
-                                        *acc -= command.edge_cost.time() + pause_between_steps;
-                                        Some(*acc)
-                                    })
-                                    .collect();
-                                let time_format = format_description!("[hour]:[minute]:[second]");
-                                for (command, time) in iter::zip(commands, times.into_iter().rev())
-                                {
-                                    let command_str = match command.edge_cost {
-                                        EdgeCost::NoMove => continue,
-                                        EdgeCost::CentralMove | EdgeCost::StandardMove => {
-                                            format!(
-                                                "/go_direct_{}",
-                                                CellIndexCommandSuffix(command.to)
-                                            )
-                                        }
-                                        EdgeCost::Caravan { .. } => {
-                                            format!("/car_{}", CellIndexCommandSuffix(command.to))
-                                        }
-                                        EdgeCost::ScrollOfEscape => "/use_soe".to_string(),
-                                    };
-                                    egui::Hyperlink::from_label_and_url(
-                                        &command_str,
-                                        format!("https://t.me/share/url?url={command_str}"),
-                                    )
-                                    .open_in_new_tab(true)
-                                    .ui(ui);
-                                    let command_time = command.edge_cost.time();
-                                    ui.label(command_time.to_string());
-                                    total_time += command_time;
-                                    ui.label(total_time.to_string());
-                                    ui.label(time.format(&time_format).unwrap());
-                                    ui.end_row();
-                                }
-                            });
-                        });
-                        if response.fully_closed() || response.fully_open() {
-                            self.need_to_save = true;
-                        }
                     }
                 }
             });
