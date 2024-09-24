@@ -42,6 +42,15 @@ impl Homeland {
         }
     }
 
+    pub const fn as_abbrev_low(&self) -> char {
+        match self {
+            Homeland::Blue => 'b',
+            Homeland::Red => 'r',
+            Homeland::Green => 'g',
+            Homeland::Yellow => 'y',
+        }
+    }
+
     pub const fn neighbours(&self) -> [Homeland; 2] {
         match self {
             Homeland::Blue => [Homeland::Yellow, Homeland::Red],

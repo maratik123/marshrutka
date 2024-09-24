@@ -18,6 +18,7 @@ use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
 pub enum PoI {
     Campfire(Homeland),
+    Fountain(Homeland),
 }
 
 #[derive(Default)]
@@ -157,9 +158,7 @@ impl MapGrid {
     }
 }
 
-pub fn arrow(painter: &Painter, from: Pos2, to: Pos2, color: Color32) {
-    let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
-    let tip_length = CELL_SIZE / 4.0;
+pub fn arrow(painter: &Painter, rot: Rot2, tip_length: f32, from: Pos2, to: Pos2, color: Color32) {
     let dir = tip_length * (to - from).normalized();
     let stroke = Stroke::new(ARROW_WIDTH, color);
     painter.line_segment([from, to], stroke);

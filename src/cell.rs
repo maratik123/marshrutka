@@ -172,6 +172,14 @@ pub fn cell_parts(center: &Option<CellElement>, bottom_right: &Option<CellElemen
             Some(CellElement::Emoji(EmojiCode('\u{1f525}', None))),
             Some(CellElement::Emoji(EmojiCode(ch, None))),
         ) => Homeland::try_from(*ch).map(PoI::Campfire).ok(),
+        (
+            Some(CellElement::Emoji(EmojiCode('\u{26f2}', None))),
+            Some(CellElement::Emoji(EmojiCode(ch, None))),
+        )
+        | (
+            Some(CellElement::Emoji(EmojiCode('\u{26f2}', Some('\u{fe0f}')))),
+            Some(CellElement::Emoji(EmojiCode(ch, None))),
+        ) => Homeland::try_from(*ch).map(PoI::Fountain).ok(),
         _ => None,
     }
 }

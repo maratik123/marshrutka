@@ -50,6 +50,15 @@ impl Border {
         self.into()
     }
 
+    pub fn as_str_low(&self) -> &'static str {
+        match self {
+            Border::BR => "br",
+            Border::RG => "rg",
+            Border::GY => "gy",
+            Border::YB => "yb",
+        }
+    }
+
     pub const fn neighbours(&self) -> [Homeland; 2] {
         match self {
             Border::BR => [Homeland::Blue, Homeland::Red],
@@ -89,6 +98,20 @@ impl Display for CellIndex {
             CellIndex::Center => "0#0".fmt(f),
             CellIndex::Homeland { homeland, pos } => write!(f, "{} {}", homeland.as_abbrev(), pos),
             CellIndex::Border { border, shift } => write!(f, "{} {}", border, shift),
+        }
+    }
+}
+
+pub struct CellIndexCommandSuffix(pub CellIndex);
+
+impl Display for CellIndexCommandSuffix {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            CellIndex::Center => <str as Display>::fmt("0_0", f),
+            CellIndex::Homeland { homeland, pos } => {
+                write!(f, "{}_{}_{}", homeland.as_abbrev_low(), pos.x, pos.y)
+            }
+            CellIndex::Border { border, shift } => write!(f, "{}_{shift}", border.as_str_low()),
         }
     }
 }

@@ -15,6 +15,12 @@ pub enum EdgeCost {
     ScrollOfEscape,
 }
 
+struct ToFountainMove {
+    time: Duration,
+    from: CellIndex,
+    to: CellIndex,
+}
+
 impl EdgeCost {
     pub const fn legs(&self) -> u32 {
         if matches!(self, EdgeCost::StandardMove) {
@@ -42,7 +48,7 @@ impl EdgeCost {
     }
 }
 
-#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, EnumIter, IntoStaticStr)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize, EnumIter, IntoStaticStr)]
 pub enum CostComparator {
     Legs,
     Time,
@@ -164,10 +170,46 @@ impl AddAssign<(&'static EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
     }
 }
 
+impl AddAssign<&ToFountainMove> for TotalCost {
+    fn add_assign(&mut self, rhs: &ToFountainMove) {
+        self.time += rhs.time;
+        let from = match self.commands.last() {
+            Some(Command {
+                edge_cost: EdgeCost::NoMove,
+                ..
+            })
+            | Some(Command {
+                edge_cost: EdgeCost::StandardMove,
+                ..
+            }) => self.commands.pop().unwrap().from,
+            _ => rhs.from,
+        };
+        self.commands.push(Command {
+            edge_cost: if from == rhs.to {
+                &EdgeCost::NoMove
+            } else {
+                &EdgeCost::StandardMove
+            },
+            from,
+            to: rhs.to,
+        })
+    }
+}
+
 impl Add<(&'static EdgeCost, u32, CellIndex, CellIndex)> for &TotalCost {
     type Output = TotalCost;
 
     fn add(self, rhs: (&'static EdgeCost, u32, CellIndex, CellIndex)) -> Self::Output {
+        let mut ret = self.clone();
+        ret += rhs;
+        ret
+    }
+}
+
+impl Add<&ToFountainMove> for &TotalCost {
+    type Output = TotalCost;
+
+    fn add(self, rhs: &ToFountainMove) -> Self::Output {
         let mut ret = self.clone();
         ret += rhs;
         ret

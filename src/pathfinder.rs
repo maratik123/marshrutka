@@ -19,6 +19,8 @@ fn inflight_edges(
     grid: &MapGrid,
     homeland: Homeland,
     vertex: CellIndex,
+    use_soe: bool,
+    use_caravans: bool,
 ) -> ArrayVec<(CellIndex, EdgeCostRef), 9> {
     let mut ret = ArrayVec::new();
     let homeland_size = grid.homeland_size();
@@ -31,24 +33,26 @@ fn inflight_edges(
                     &EdgeCost::CentralMove,
                 )
             }));
-            // 3
-            ret.extend(
-                homeland
-                    .neighbours()
-                    .into_iter()
-                    .chain(iter::once(homeland.farland()))
-                    .map(|enemy| {
-                        (
-                            grid.grid[grid.poi[&PoI::Campfire(enemy)]].index,
-                            CARAVAN_CENTER_ENEMY,
-                        )
-                    }),
-            );
-            // 1
-            ret.push((
-                grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
-                CARAVAN_CENTER_HOMELAND,
-            ));
+            if use_caravans {
+                // 3
+                ret.extend(
+                    homeland
+                        .neighbours()
+                        .into_iter()
+                        .chain(iter::once(homeland.farland()))
+                        .map(|enemy| {
+                            (
+                                grid.grid[grid.poi[&PoI::Campfire(enemy)]].index,
+                                CARAVAN_CENTER_ENEMY,
+                            )
+                        }),
+                );
+                // 1
+                ret.push((
+                    grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
+                    CARAVAN_CENTER_HOMELAND,
+                ));
+            }
         }
         CellIndex::Border { border, shift } => {
             // 1
@@ -138,62 +142,66 @@ fn inflight_edges(
                     &EdgeCost::StandardMove,
                 ));
             }
-            if let Some(PoI::Campfire(campfire)) = grid.grid[grid.index[&vertex]].poi {
-                // 1
-                ret.push((CellIndex::Center, CARAVAN_CAMPFIRE_CENTER));
-                fn add_neighbour_paths(
-                    arr: &mut ArrayVec<(CellIndex, EdgeCostRef), 9>,
-                    grid: &MapGrid,
-                    campfire: Homeland,
-                    edge_cost: EdgeCostRef,
-                ) {
-                    arr.extend(campfire.neighbours().into_iter().map(|neighbour_campfire| {
-                        (
-                            grid.grid[grid.poi[&PoI::Campfire(neighbour_campfire)]].index,
-                            edge_cost,
-                        )
-                    }));
-                }
-                if campfire == homeland {
+            if use_caravans {
+                if let Some(PoI::Campfire(campfire)) = grid.grid[grid.index[&vertex]].poi {
                     // 1
-                    ret.push((
-                        grid.grid[grid.poi[&PoI::Campfire(campfire.farland())]].index,
-                        CARAVAN_HOMELAND_FARLAND,
-                    ));
-                    // 2
-                    add_neighbour_paths(&mut ret, grid, campfire, CARAVAN_HOMELAND_NEIGHBOUR);
-                } else if campfire == homeland.farland() {
-                    // 1
-                    ret.push((
-                        grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
-                        CARAVAN_FARLAND_HOMELAND,
-                    ));
-                    // 2
-                    add_neighbour_paths(&mut ret, grid, campfire, CARAVAN_FARLAND_NEIGHBOUR);
-                } else {
-                    // 1
-                    ret.push((
-                        grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
-                        CARAVAN_NEIGHBOUR_HOMELAND,
-                    ));
-                    // 1
-                    ret.push((
-                        grid.grid[grid.poi[&PoI::Campfire(campfire.farland())]].index,
-                        CARAVAN_NEIGHBOUR_NEIGHBOUR,
-                    ));
-                    // 1
-                    ret.push((
-                        grid.grid[grid.poi[&PoI::Campfire(homeland.farland())]].index,
-                        CARAVAN_NEIGHBOUR_FARLAND,
-                    ));
+                    ret.push((CellIndex::Center, CARAVAN_CAMPFIRE_CENTER));
+                    fn add_neighbour_paths(
+                        arr: &mut ArrayVec<(CellIndex, EdgeCostRef), 9>,
+                        grid: &MapGrid,
+                        campfire: Homeland,
+                        edge_cost: EdgeCostRef,
+                    ) {
+                        arr.extend(campfire.neighbours().into_iter().map(|neighbour_campfire| {
+                            (
+                                grid.grid[grid.poi[&PoI::Campfire(neighbour_campfire)]].index,
+                                edge_cost,
+                            )
+                        }));
+                    }
+                    if campfire == homeland {
+                        // 1
+                        ret.push((
+                            grid.grid[grid.poi[&PoI::Campfire(campfire.farland())]].index,
+                            CARAVAN_HOMELAND_FARLAND,
+                        ));
+                        // 2
+                        add_neighbour_paths(&mut ret, grid, campfire, CARAVAN_HOMELAND_NEIGHBOUR);
+                    } else if campfire == homeland.farland() {
+                        // 1
+                        ret.push((
+                            grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
+                            CARAVAN_FARLAND_HOMELAND,
+                        ));
+                        // 2
+                        add_neighbour_paths(&mut ret, grid, campfire, CARAVAN_FARLAND_NEIGHBOUR);
+                    } else {
+                        // 1
+                        ret.push((
+                            grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
+                            CARAVAN_NEIGHBOUR_HOMELAND,
+                        ));
+                        // 1
+                        ret.push((
+                            grid.grid[grid.poi[&PoI::Campfire(campfire.farland())]].index,
+                            CARAVAN_NEIGHBOUR_NEIGHBOUR,
+                        ));
+                        // 1
+                        ret.push((
+                            grid.grid[grid.poi[&PoI::Campfire(homeland.farland())]].index,
+                            CARAVAN_NEIGHBOUR_FARLAND,
+                        ));
+                    }
                 }
             }
         }
     }
     // 0..1
-    let homeland_campfire = grid.grid[grid.poi[&PoI::Campfire(homeland)]].index;
-    if homeland_campfire != vertex {
-        ret.push((homeland_campfire, &EdgeCost::ScrollOfEscape));
+    if use_soe {
+        let homeland_campfire = grid.grid[grid.poi[&PoI::Campfire(homeland)]].index;
+        if homeland_campfire != vertex {
+            ret.push((homeland_campfire, &EdgeCost::ScrollOfEscape));
+        }
     }
     ret
 }
@@ -202,9 +210,10 @@ pub fn find_path(
     grid: &MapGrid,
     homeland: Homeland,
     scroll_of_escape_cost: u32,
-    from: CellIndex,
-    to: CellIndex,
+    (from, to): (CellIndex, CellIndex),
     (c1, c2): (CostComparator, CostComparator),
+    use_soe: bool,
+    use_caravans: bool,
 ) -> Option<TotalCost> {
     if from == to {
         return Some(TotalCost::new(from));
@@ -222,7 +231,9 @@ pub fn find_path(
         if comparator(&cost, &dist[&lowest_cost_index]).is_gt() {
             continue;
         }
-        for (edge_index, edge_cost) in inflight_edges(grid, homeland, lowest_cost_index) {
+        for (edge_index, edge_cost) in
+            inflight_edges(grid, homeland, lowest_cost_index, use_soe, use_caravans)
+        {
             let next = &cost
                 + (
                     edge_cost,
