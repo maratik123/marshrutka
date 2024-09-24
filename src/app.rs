@@ -307,14 +307,11 @@ impl MarshrutkaApp {
                                     let times: Vec<_> = commands
                                         .iter()
                                         .rev()
-                                        .scan(
-                                            self.arrive_at + pause_between_steps,
-                                            |acc, command| {
-                                                *acc -= command.aggregated_cost.time()
-                                                    + pause_between_steps;
-                                                Some(*acc)
-                                            },
-                                        )
+                                        .scan(self.arrive_at, |acc, command| {
+                                            *acc -= command.aggregated_cost.time()
+                                                + pause_between_steps;
+                                            Some(*acc)
+                                        })
                                         .collect();
                                     let time_format =
                                         format_description!("[hour]:[minute]:[second]");
@@ -349,6 +346,7 @@ impl MarshrutkaApp {
                                         let command_time = command.aggregated_cost.time();
                                         ui.label(command_time.to_string());
                                         total_time += command_time;
+                                        total_time += pause_between_steps;
                                         ui.label(total_time.to_string());
                                         ui.label(time.format(&time_format).unwrap());
                                         ui.end_row();
