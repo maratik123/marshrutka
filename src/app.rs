@@ -419,66 +419,64 @@ impl eframe::App for MarshrutkaApp {
 
             ui.separator();
 
-            ScrollArea::both().show(ui, |ui| {
-                let grid_response = ui.collapsing(
-                    if self.actual {
-                        "Map"
-                    } else {
-                        "Map (not actual)"
-                    },
-                    |ui| {
-                        let InnerResponse {
-                            inner:
-                                MapGridResponse {
-                                    centers,
-                                    left: from,
-                                    right: to,
-                                },
-                            response,
-                        } = ScrollArea::both()
-                            .show(ui, |ui| {
-                                let emojis = self.emojis(ui.ctx());
-                                self.grid.as_ref().unwrap().ui_content(ui, emojis)
-                            })
-                            .inner;
-                        if let Some(from) = from {
-                            self.from = Some(from);
-                            self.need_to_save = true;
-                        }
-                        if let Some(to) = to {
-                            self.to = Some(to);
-                            self.need_to_save = true;
-                        }
-                        (centers, response)
-                    },
-                );
-                if grid_response.fully_closed() || grid_response.fully_open() {
-                    self.need_to_save = true;
-                }
-                let grid_response = grid_response.body_returned;
-                if let Some((path, (centers, grid_response))) = path.as_ref().zip(grid_response) {
-                    let painter = ui.painter_at(grid_response.interact_rect);
-                    let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
-                    let tip_length = CELL_SIZE / 4.0;
-                    for command in path.commands.iter() {
-                        arrow(
-                            &painter,
-                            rot,
-                            tip_length,
-                            centers[&command.from],
-                            centers[&command.to],
-                            match command.aggregated_cost {
-                                AggregatedCost::NoMove => continue,
-                                AggregatedCost::CentralMove { .. } => Color32::RED,
-                                AggregatedCost::StandardMove { .. } => Color32::BLUE,
-                                AggregatedCost::Caravan { .. } => Color32::GREEN,
-                                AggregatedCost::ScrollOfEscape { .. } => Color32::BROWN,
-                            }
-                            .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),
-                        );
+            let grid_response = ui.collapsing(
+                if self.actual {
+                    "Map"
+                } else {
+                    "Map (not actual)"
+                },
+                |ui| {
+                    let InnerResponse {
+                        inner:
+                            MapGridResponse {
+                                centers,
+                                left: from,
+                                right: to,
+                            },
+                        response,
+                    } = ScrollArea::both()
+                        .show(ui, |ui| {
+                            let emojis = self.emojis(ui.ctx());
+                            self.grid.as_ref().unwrap().ui_content(ui, emojis)
+                        })
+                        .inner;
+                    if let Some(from) = from {
+                        self.from = Some(from);
+                        self.need_to_save = true;
                     }
+                    if let Some(to) = to {
+                        self.to = Some(to);
+                        self.need_to_save = true;
+                    }
+                    (centers, response)
+                },
+            );
+            if grid_response.fully_closed() || grid_response.fully_open() {
+                self.need_to_save = true;
+            }
+            let grid_response = grid_response.body_returned;
+            if let Some((path, (centers, grid_response))) = path.as_ref().zip(grid_response) {
+                let painter = ui.painter_at(grid_response.interact_rect);
+                let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
+                let tip_length = CELL_SIZE / 4.0;
+                for command in path.commands.iter() {
+                    arrow(
+                        &painter,
+                        rot,
+                        tip_length,
+                        centers[&command.from],
+                        centers[&command.to],
+                        match command.aggregated_cost {
+                            AggregatedCost::NoMove => continue,
+                            AggregatedCost::CentralMove { .. } => Color32::RED,
+                            AggregatedCost::StandardMove { .. } => Color32::BLUE,
+                            AggregatedCost::Caravan { .. } => Color32::GREEN,
+                            AggregatedCost::ScrollOfEscape { .. } => Color32::BROWN,
+                        }
+                        .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),
+                    );
                 }
-            });
+            }
         });
 
         if self.need_to_save {
