@@ -101,4 +101,7 @@ jobs:
           toolchain: stable
           target: ${{ matrix.TARGET }}
 
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get install musl-tools
+
       - run: cargo build --verbose --release --target=${{ matrix.TARGET }}
