@@ -10,6 +10,7 @@ use crate::pathfinder::find_path;
 use eframe::emath::Align;
 use egui::emath::Rot2;
 use egui::load::BytesPoll;
+use egui::scroll_area::ScrollBarVisibility;
 use egui::{
     Color32, FontId, Image, ImageButton, InnerResponse, Layout, ScrollArea, TextStyle, Ui, Visuals,
     Widget,
@@ -116,26 +117,28 @@ impl MarshrutkaApp {
                     }
                 }
                 ui.separator();
-                ScrollArea::horizontal().show(ui, |ui| {
-                    ui.label("Sort by");
-                    let mut sort_selector = |ui: &mut Ui, label, val: &mut CostComparator| {
-                        egui::ComboBox::from_id_source(label)
-                            .width(0.0)
-                            .selected_text(val.as_str())
-                            .show_ui(ui, |ui| {
-                                for sort in CostComparator::iter() {
-                                    if ui.selectable_value(val, sort, sort.as_str()).changed() {
-                                        self.need_to_save = true;
+                ScrollArea::horizontal()
+                    .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
+                    .show(ui, |ui| {
+                        ui.label("Sort by");
+                        let mut sort_selector = |ui: &mut Ui, label, val: &mut CostComparator| {
+                            egui::ComboBox::from_id_source(label)
+                                .width(0.0)
+                                .selected_text(val.as_str())
+                                .show_ui(ui, |ui| {
+                                    for sort in CostComparator::iter() {
+                                        if ui.selectable_value(val, sort, sort.as_str()).changed() {
+                                            self.need_to_save = true;
+                                        }
                                     }
-                                }
-                            })
-                            .response
-                            .on_hover_text(label);
-                    };
-                    sort_selector(ui, "Sort by", &mut self.sort_by.0);
-                    ui.label("and then by");
-                    sort_selector(ui, "Then sort by", &mut self.sort_by.1);
-                });
+                                })
+                                .response
+                                .on_hover_text(label);
+                        };
+                        sort_selector(ui, "Sort by", &mut self.sort_by.0);
+                        ui.label("and then by");
+                        sort_selector(ui, "and then by", &mut self.sort_by.1);
+                    });
             });
         });
     }
