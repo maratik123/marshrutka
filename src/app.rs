@@ -219,130 +219,141 @@ impl MarshrutkaApp {
                                 }]
                             )
                         {
-                            ui.horizontal(|ui| {
-                                fn show_item(
-                                    s: &MarshrutkaApp,
-                                    ui: &mut Ui,
-                                    ch: char,
-                                    val: impl Display,
-                                ) {
-                                    ui.scope(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 4.0;
-                                        ui.label(val.to_string());
-                                        Image::new(
-                                            &s.emojis(ui.ctx())
-                                                .get_texture(&ch.into())
-                                                .unwrap()
-                                                .corner,
-                                        )
-                                        .max_height(ui.text_style_height(&TextStyle::Body))
-                                        .ui(ui);
-                                    });
-                                }
-                                show_item(self, ui, '\u{1f463}', path.legs);
-                                show_item(self, ui, '\u{23f0}', path.time);
-                                show_item(self, ui, '\u{1fa99}', path.money);
-                                ui.label("Arrive at:");
-
-                                let mut hr = self.arrive_at.hour();
-                                if egui::DragValue::new(&mut hr)
-                                    .clamp_to_range(true)
-                                    .range(0..=23)
-                                    .ui(ui)
-                                    .changed()
-                                {
-                                    self.arrive_at = self.arrive_at.replace_hour(hr).unwrap();
-                                    self.need_to_save = true;
-                                }
-                                ui.label("h");
-                                let mut mi = self.arrive_at.minute();
-                                if egui::DragValue::new(&mut mi)
-                                    .clamp_to_range(true)
-                                    .range(0..=59)
-                                    .ui(ui)
-                                    .changed()
-                                {
-                                    self.arrive_at = self.arrive_at.replace_minute(mi).unwrap();
-                                    self.need_to_save = true;
-                                }
-                                ui.label("m");
-                                let mut sec = self.arrive_at.second();
-                                if egui::DragValue::new(&mut sec)
-                                    .clamp_to_range(true)
-                                    .range(0..=59)
-                                    .ui(ui)
-                                    .changed()
-                                {
-                                    self.arrive_at = self.arrive_at.replace_second(sec).unwrap();
-                                    self.need_to_save = true;
-                                }
-                                ui.label("s");
-                            });
-
-                            egui::Grid::new("Commands").striped(true).show(ui, |ui| {
-                                ui.label("Command");
-                                ui.label("Duration");
-                                ui.label("Total time");
-                                ui.label("Schedule at");
-                                ui.end_row();
-                                let mut total_time = Duration::ZERO;
-                                let commands: Vec<_> = path
-                                    .commands
-                                    .iter()
-                                    .filter(|command| {
-                                        !matches!(
-                                            command,
-                                            Command {
-                                                aggregated_cost: AggregatedCost::NoMove,
-                                                ..
-                                            }
-                                        )
-                                    })
-                                    .copied()
-                                    .collect();
-                                let pause_between_steps =
-                                    Duration::seconds(self.pause_between_steps as i64);
-                                let times: Vec<_> = commands
-                                    .iter()
-                                    .rev()
-                                    .scan(self.arrive_at + pause_between_steps, |acc, command| {
-                                        *acc -=
-                                            command.aggregated_cost.time() + pause_between_steps;
-                                        Some(*acc)
-                                    })
-                                    .collect();
-                                let time_format = format_description!("[hour]:[minute]:[second]");
-                                for (command, time) in iter::zip(commands, times.into_iter().rev())
-                                {
-                                    let command_str = match command.aggregated_cost {
-                                        AggregatedCost::NoMove => continue,
-                                        AggregatedCost::CentralMove { .. }
-                                        | AggregatedCost::StandardMove { .. } => {
-                                            format!(
-                                                "/go_direct_{}",
-                                                CellIndexCommandSuffix(command.to)
+                            ScrollArea::horizontal().show(ui, |ui| {
+                                ui.horizontal(|ui| {
+                                    fn show_item(
+                                        s: &MarshrutkaApp,
+                                        ui: &mut Ui,
+                                        ch: char,
+                                        val: impl Display,
+                                    ) {
+                                        ui.scope(|ui| {
+                                            ui.spacing_mut().item_spacing.x = 4.0;
+                                            ui.label(val.to_string());
+                                            Image::new(
+                                                &s.emojis(ui.ctx())
+                                                    .get_texture(&ch.into())
+                                                    .unwrap()
+                                                    .corner,
                                             )
-                                        }
-                                        AggregatedCost::Caravan { .. } => {
-                                            format!("/car_{}", CellIndexCommandSuffix(command.to))
-                                        }
-                                        AggregatedCost::ScrollOfEscape { .. } => {
-                                            "/use_soe".to_string()
-                                        }
-                                    };
-                                    egui::Hyperlink::from_label_and_url(
-                                        &command_str,
-                                        format!("https://t.me/share/url?url={command_str}"),
-                                    )
-                                    .open_in_new_tab(true)
-                                    .ui(ui);
-                                    let command_time = command.aggregated_cost.time();
-                                    ui.label(command_time.to_string());
-                                    total_time += command_time;
-                                    ui.label(total_time.to_string());
-                                    ui.label(time.format(&time_format).unwrap());
+                                            .max_height(ui.text_style_height(&TextStyle::Body))
+                                            .ui(ui);
+                                        });
+                                    }
+                                    show_item(self, ui, '\u{1f463}', path.legs);
+                                    show_item(self, ui, '\u{23f0}', path.time);
+                                    show_item(self, ui, '\u{1fa99}', path.money);
+                                    ui.label("Arrive at:");
+
+                                    let mut hr = self.arrive_at.hour();
+                                    if egui::DragValue::new(&mut hr)
+                                        .clamp_to_range(true)
+                                        .range(0..=23)
+                                        .ui(ui)
+                                        .changed()
+                                    {
+                                        self.arrive_at = self.arrive_at.replace_hour(hr).unwrap();
+                                        self.need_to_save = true;
+                                    }
+                                    ui.label("h");
+                                    let mut mi = self.arrive_at.minute();
+                                    if egui::DragValue::new(&mut mi)
+                                        .clamp_to_range(true)
+                                        .range(0..=59)
+                                        .ui(ui)
+                                        .changed()
+                                    {
+                                        self.arrive_at = self.arrive_at.replace_minute(mi).unwrap();
+                                        self.need_to_save = true;
+                                    }
+                                    ui.label("m");
+                                    let mut sec = self.arrive_at.second();
+                                    if egui::DragValue::new(&mut sec)
+                                        .clamp_to_range(true)
+                                        .range(0..=59)
+                                        .ui(ui)
+                                        .changed()
+                                    {
+                                        self.arrive_at =
+                                            self.arrive_at.replace_second(sec).unwrap();
+                                        self.need_to_save = true;
+                                    }
+                                    ui.label("s");
+                                });
+
+                                egui::Grid::new("Commands").striped(true).show(ui, |ui| {
+                                    ui.label("Command");
+                                    ui.label("Duration");
+                                    ui.label("Total time");
+                                    ui.label("Schedule at");
                                     ui.end_row();
-                                }
+                                    let mut total_time = Duration::ZERO;
+                                    let commands: Vec<_> = path
+                                        .commands
+                                        .iter()
+                                        .filter(|command| {
+                                            !matches!(
+                                                command,
+                                                Command {
+                                                    aggregated_cost: AggregatedCost::NoMove,
+                                                    ..
+                                                }
+                                            )
+                                        })
+                                        .copied()
+                                        .collect();
+                                    let pause_between_steps =
+                                        Duration::seconds(self.pause_between_steps as i64);
+                                    let times: Vec<_> = commands
+                                        .iter()
+                                        .rev()
+                                        .scan(
+                                            self.arrive_at + pause_between_steps,
+                                            |acc, command| {
+                                                *acc -= command.aggregated_cost.time()
+                                                    + pause_between_steps;
+                                                Some(*acc)
+                                            },
+                                        )
+                                        .collect();
+                                    let time_format =
+                                        format_description!("[hour]:[minute]:[second]");
+                                    for (command, time) in
+                                        iter::zip(commands, times.into_iter().rev())
+                                    {
+                                        let command_str = match command.aggregated_cost {
+                                            AggregatedCost::NoMove => continue,
+                                            AggregatedCost::CentralMove { .. }
+                                            | AggregatedCost::StandardMove { .. } => {
+                                                format!(
+                                                    "/go_direct_{}",
+                                                    CellIndexCommandSuffix(command.to)
+                                                )
+                                            }
+                                            AggregatedCost::Caravan { .. } => {
+                                                format!(
+                                                    "/car_{}",
+                                                    CellIndexCommandSuffix(command.to)
+                                                )
+                                            }
+                                            AggregatedCost::ScrollOfEscape { .. } => {
+                                                "/use_soe".to_string()
+                                            }
+                                        };
+                                        egui::Hyperlink::from_label_and_url(
+                                            &command_str,
+                                            format!("https://t.me/share/url?url={command_str}"),
+                                        )
+                                        .open_in_new_tab(true)
+                                        .ui(ui);
+                                        let command_time = command.aggregated_cost.time();
+                                        ui.label(command_time.to_string());
+                                        total_time += command_time;
+                                        ui.label(total_time.to_string());
+                                        ui.label(time.format(&time_format).unwrap());
+                                        ui.end_row();
+                                    }
+                                });
                             });
                         }
                     }
