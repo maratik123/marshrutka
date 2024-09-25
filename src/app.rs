@@ -409,6 +409,7 @@ impl MarshrutkaApp {
             } else {
                 "Map (not actual)"
             })
+            .id_source("Map")
             .default_open(true)
             .show(ui, |ui| {
                 let InnerResponse {
