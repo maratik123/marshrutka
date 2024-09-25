@@ -17,6 +17,7 @@ use egui::{
     Widget,
 };
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::fmt::Display;
@@ -303,7 +304,7 @@ impl MarshrutkaApp {
                                     ui.label("Schedule at");
                                     ui.end_row();
                                     let mut total_time = Duration::ZERO;
-                                    let commands: Vec<_> = path
+                                    let commands: SmallVec<[_; 5]> = path
                                         .commands
                                         .iter()
                                         .filter(|command| {
@@ -319,7 +320,7 @@ impl MarshrutkaApp {
                                         .collect();
                                     let pause_between_steps =
                                         Duration::seconds(self.pause_between_steps as i64);
-                                    let times: Vec<_> = commands
+                                    let times: SmallVec<[_; 5]> = commands
                                         .iter()
                                         .rev()
                                         .scan(self.arrive_at, |acc, command| {

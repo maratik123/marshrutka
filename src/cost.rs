@@ -1,5 +1,6 @@
 use crate::index::CellIndex;
 use serde::{Deserialize, Serialize};
+use smallvec::{smallvec, SmallVec};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign};
@@ -133,13 +134,13 @@ pub struct TotalCost {
     pub legs: u32,
     pub money: u32,
     pub time: Duration,
-    pub commands: Vec<Command>,
+    pub commands: SmallVec<[Command; 5]>,
 }
 
 impl TotalCost {
     pub fn new(from: CellIndex) -> Self {
         Self {
-            commands: vec![Command {
+            commands: smallvec![Command {
                 aggregated_cost: AggregatedCost::NoMove,
                 from,
                 to: from,
