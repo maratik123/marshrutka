@@ -27,6 +27,9 @@ use strum::IntoEnumIterator;
 use time::macros::format_description;
 use time::{Duration, Time};
 
+const HELP1: &str = "To point \"From\" - LMB or short tap,";
+const HELP2: &str = "to point \"To\" - RMB or long tap";
+
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub struct MarshrutkaApp {
@@ -156,7 +159,10 @@ impl MarshrutkaApp {
                     ui.add_space(8.0);
                     ui.label("Transport accessibility\nfor retarded people");
                     ui.add_space(8.0);
-                    ui.label("LMB/short tap - from, RMB/long tap - to");
+                    ui.label(HELP1);
+                    ui.label(HELP2);
+                    ui.add_space(4.0);
+                    ui.label("Any numeric values can be\nchanged by dragging the number");
                     ui.add_space(8.0);
                     if cfg!(debug_assertions) {
                         egui::warn_if_debug_build(ui);
@@ -399,11 +405,10 @@ impl MarshrutkaApp {
 
             ui.separator();
 
-            let grid_response = egui::CollapsingHeader::new(if self.actual {
-                "Map"
-            } else {
-                "Map (not actual)"
-            })
+            let grid_response = egui::CollapsingHeader::new(format!(
+                "Map{} (hint: {HELP1} {HELP2})",
+                if self.actual { "" } else { "[not actual]" },
+            ))
             .default_open(true)
             .show(ui, |ui| {
                 let InnerResponse {
@@ -449,7 +454,7 @@ impl MarshrutkaApp {
                             AggregatedCost::NoMove => continue,
                             AggregatedCost::CentralMove { .. } => Color32::RED,
                             AggregatedCost::StandardMove { .. } => Color32::BLUE,
-                            AggregatedCost::Caravan { .. } => Color32::GREEN,
+                            AggregatedCost::Caravan { .. } => Color32::DARK_GREEN,
                             AggregatedCost::ScrollOfEscape { .. } => Color32::BROWN,
                         }
                         .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),

@@ -14,3 +14,4 @@ pub const CELL_ROUNDING: f32 = 5.0;
 pub const BLEACH_ALPHA: u8 = 166;
 
 pub const ARROW_WIDTH: f32 = 3.0;
+pub const ARROW_TIP_CIRCLE: f32 = 5.0;

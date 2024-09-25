@@ -1,5 +1,5 @@
 use crate::cell::{cell_parts, Cell, CellElement};
-use crate::consts::{ARROW_WIDTH, CELL_SIZE, GRID_SPACING};
+use crate::consts::{ARROW_TIP_CIRCLE, ARROW_WIDTH, CELL_SIZE, GRID_SPACING};
 use crate::emoji::EmojiMap;
 use crate::homeland::Homeland;
 use crate::index::CellIndex;
@@ -163,6 +163,8 @@ pub fn arrow(painter: &Painter, rot: Rot2, tip_length: f32, from: Pos2, to: Pos2
     painter.line_segment([from, to], stroke);
     painter.line_segment([to, to - rot * dir], stroke);
     painter.line_segment([to, to - rot.inverse() * dir], stroke);
+    painter.circle_stroke(from, ARROW_TIP_CIRCLE, stroke);
+    painter.circle_filled(to, ARROW_TIP_CIRCLE, color);
 }
 
 fn parse_cell_element(map_cell: &HTMLTag, parser: &Parser, class: &str) -> Option<CellElement> {
