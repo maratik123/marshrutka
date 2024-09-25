@@ -391,13 +391,10 @@ impl MarshrutkaApp {
                     self.from.map(|s| s.to_string()).unwrap_or_default(),
                     self.to.map(|s| s.to_string()).unwrap_or_default()
                 ));
-                if ui.checkbox(&mut self.use_soe, "Use SoE").changed() {
+                if ui.checkbox(&mut self.use_soe, "SoE").changed() {
                     self.need_to_save = true;
                 }
-                if ui
-                    .checkbox(&mut self.use_caravans, "Use caravans")
-                    .changed()
-                {
+                if ui.checkbox(&mut self.use_caravans, "Caravans").changed() {
                     self.need_to_save = true;
                 }
             });
