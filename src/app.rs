@@ -376,53 +376,8 @@ impl MarshrutkaApp {
             }
         });
     }
-}
 
-impl eframe::App for MarshrutkaApp {
-    /// Called each time the UI needs repainting, which may be many times per second.
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        if self.grid.is_none() {
-            let bytes = ctx.try_load_bytes("https://api.chatwars.me/webview/map");
-
-            let (s, actual) = match &bytes {
-                Ok(BytesPoll::Pending { .. }) => {
-                    ctx.request_repaint();
-                    egui::CentralPanel::default().show(ctx, |ui| {
-                        ui.centered_and_justified(|ui| {
-                            ui.label("Loading...");
-                        })
-                    });
-                    return;
-                }
-                Ok(BytesPoll::Ready { bytes, .. }) => (String::from_utf8_lossy(bytes), true),
-                Err(_) => (
-                    Cow::Borrowed(include_str!(concat!(
-                        env!("CARGO_MANIFEST_DIR"),
-                        "/Map.html"
-                    ))),
-                    false,
-                ),
-            };
-            match MapGrid::parse(s.as_ref()) {
-                Ok(grid) => {
-                    self.grid = Some(grid);
-                    self.actual = actual;
-                }
-                Err(err) => {
-                    egui::CentralPanel::default()
-                        .show(ctx, |ui| ui.label(format!("Invalid map: {err}")));
-                    return;
-                }
-            };
-        }
-
-        self.top_menu(ctx);
-
-        self.commands(ctx);
-
-        self.settings(ctx);
-        self.about(ctx);
-
+    fn central_pane(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
             ui.horizontal(|ui| {
@@ -502,10 +457,50 @@ impl eframe::App for MarshrutkaApp {
                 }
             }
         });
+    }
 
+    fn load_map(&mut self, ctx: &egui::Context) -> Option<()> {
+        if self.grid.is_none() {
+            let bytes = ctx.try_load_bytes("https://api.chatwars.me/webview/map");
+
+            let (s, actual) = match &bytes {
+                Ok(BytesPoll::Pending { .. }) => {
+                    ctx.request_repaint();
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        ui.centered_and_justified(|ui| {
+                            ui.label("Loading...");
+                        })
+                    });
+                    return None;
+                }
+                Ok(BytesPoll::Ready { bytes, .. }) => (String::from_utf8_lossy(bytes), true),
+                Err(_) => (
+                    Cow::Borrowed(include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/Map.html"
+                    ))),
+                    false,
+                ),
+            };
+            match MapGrid::parse(s.as_ref()) {
+                Ok(grid) => {
+                    self.grid = Some(grid);
+                    self.actual = actual;
+                }
+                Err(err) => {
+                    egui::CentralPanel::default()
+                        .show(ctx, |ui| ui.label(format!("Invalid map: {err}")));
+                    return None;
+                }
+            };
+        }
+        Some(())
+    }
+
+    fn post_process(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         if self.need_to_save {
             if let Some(storage) = frame.storage_mut() {
-                self.save(storage);
+                self.save_app(storage);
             }
             self.need_to_save = false;
             self.path = self
@@ -528,9 +523,35 @@ impl eframe::App for MarshrutkaApp {
         }
     }
 
+    fn save_app(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, self);
+    }
+}
+
+impl eframe::App for MarshrutkaApp {
+    /// Called each time the UI needs repainting, which may be many times per second.
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        // Prepare data
+        if self.load_map(ctx).is_none() {
+            return;
+        }
+
+        // Side panels
+        self.top_menu(ctx);
+        self.commands(ctx);
+
+        // Windows
+        self.settings(ctx);
+        self.about(ctx);
+
+        self.central_pane(ctx);
+
+        self.post_process(ctx, frame);
+    }
+
     /// Called by the framework to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, self);
+        self.save_app(storage);
     }
 }
 
