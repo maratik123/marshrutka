@@ -383,9 +383,8 @@ impl MarshrutkaApp {
         });
     }
 
-    fn central_pane(&mut self, ctx: &egui::Context) {
+    fn central_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            // The central panel the region left after adding TopPanel's and SidePanel's
             ui.horizontal(|ui| {
                 ui.label(format!(
                     "From '{}' to '{}'",
@@ -505,14 +504,7 @@ impl MarshrutkaApp {
         }
     }
 
-    fn post_process(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        if !self.need_to_save {
-            return;
-        }
-        if let Some(storage) = frame.storage_mut() {
-            self.save_app(storage);
-        }
-        self.need_to_save = false;
+    fn update_path(&mut self) -> bool {
         self.path = self
             .from
             .zip(self.to)
@@ -528,6 +520,23 @@ impl MarshrutkaApp {
                 )
             })
             .map(Rc::new);
+        self.path.is_some()
+    }
+
+    fn post_process(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        if !self.need_to_save {
+            if self.path.is_none() && self.update_path() {
+                ctx.request_repaint();
+            }
+            return;
+        }
+
+        self.update_path();
+        self.need_to_save = false;
+
+        if let Some(storage) = frame.storage_mut() {
+            self.save_app(storage);
+        }
 
         ctx.request_repaint();
     }
@@ -544,6 +553,7 @@ impl eframe::App for MarshrutkaApp {
         if !self.load_map(ctx) {
             return;
         }
+
         // Side panels
         self.top_menu(ctx);
         self.commands(ctx);
@@ -552,8 +562,8 @@ impl eframe::App for MarshrutkaApp {
         self.settings(ctx);
         self.about(ctx);
 
-        // Central pane
-        self.central_pane(ctx);
+        // Central panel. Should be added after all other panels
+        self.central_panel(ctx);
 
         // Postprocess state
         self.post_process(ctx, frame);
