@@ -117,9 +117,9 @@ impl From<(&EdgeCost, u32)> for AggregatedCost {
                 legs: edge_cost.legs(),
                 time: edge_cost.time(),
             },
-            EdgeCost::Caravan { money, .. } => AggregatedCost::Caravan {
-                time: edge_cost.time(),
+            EdgeCost::Caravan { money, time } => AggregatedCost::Caravan {
                 money: *money,
+                time: *time,
             },
             EdgeCost::ScrollOfEscape => AggregatedCost::ScrollOfEscape {
                 money: scroll_of_escape_cost,
@@ -211,41 +211,35 @@ impl AddAssign<(&'static EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
                     aggregated_cost: AggregatedCost::NoMove,
                     ..
                 }),
-                edge_cost,
+                _,
             ) => (
                 (edge_cost, scroll_of_escape_cost).into(),
                 self.commands.pop().unwrap().from,
             ),
             (
                 Some(Command {
-                    aggregated_cost: AggregatedCost::StandardMove { legs, time },
+                    aggregated_cost:
+                        AggregatedCost::StandardMove {
+                            legs: agg_legs,
+                            time: agg_time,
+                        },
                     ..
                 }),
                 EdgeCost::StandardMove,
             ) => {
                 let aggregated_cost = AggregatedCost::StandardMove {
-                    legs: *legs + edge_cost.legs(),
-                    time: *time + edge_cost.time(),
+                    legs: *agg_legs + legs,
+                    time: *agg_time + time,
                 };
                 (aggregated_cost, self.commands.pop().unwrap().from)
             }
-            (_, edge_cost) => (
+            _ => (
                 match edge_cost {
                     EdgeCost::NoMove => AggregatedCost::NoMove,
-                    EdgeCost::CentralMove => AggregatedCost::CentralMove {
-                        time: edge_cost.time(),
-                    },
-                    EdgeCost::StandardMove => AggregatedCost::StandardMove {
-                        time: edge_cost.time(),
-                        legs: edge_cost.legs(),
-                    },
-                    EdgeCost::Caravan { .. } => AggregatedCost::Caravan {
-                        time: edge_cost.time(),
-                        money: edge_cost.money(scroll_of_escape_cost),
-                    },
-                    EdgeCost::ScrollOfEscape => AggregatedCost::ScrollOfEscape {
-                        money: edge_cost.money(scroll_of_escape_cost),
-                    },
+                    EdgeCost::CentralMove => AggregatedCost::CentralMove { time },
+                    EdgeCost::StandardMove => AggregatedCost::StandardMove { time, legs },
+                    EdgeCost::Caravan { .. } => AggregatedCost::Caravan { time, money },
+                    EdgeCost::ScrollOfEscape => AggregatedCost::ScrollOfEscape { money },
                 },
                 from,
             ),

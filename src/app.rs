@@ -92,7 +92,7 @@ impl MarshrutkaApp {
                 let is_web = cfg!(target_arch = "wasm32");
                 ui.menu_button("File", |ui| {
                     if ui.button("Settings").clicked() {
-                        self.show_settings ^= true;
+                        self.show_settings = !self.show_settings;
                         self.need_to_save = true;
                         ui.close_menu();
                     }
@@ -106,7 +106,7 @@ impl MarshrutkaApp {
                     }
                 });
                 if ui.button("About").clicked() {
-                    self.show_about ^= true;
+                    self.show_about = !self.show_about;
                     self.need_to_save = true;
                 }
                 ui.separator();
@@ -124,8 +124,8 @@ impl MarshrutkaApp {
                 ScrollArea::horizontal()
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
                     .show(ui, |ui| {
-                        ui.label("Sort by");
                         let mut sort_selector = |ui: &mut Ui, label, val: &mut CostComparator| {
+                            ui.label(label);
                             egui::ComboBox::from_id_source(label)
                                 .width(0.0)
                                 .selected_text(val.as_str())
@@ -140,7 +140,6 @@ impl MarshrutkaApp {
                                 .on_hover_text(label);
                         };
                         sort_selector(ui, "Sort by", &mut self.sort_by.0);
-                        ui.label("and then by");
                         sort_selector(ui, "and then by", &mut self.sort_by.1);
                     });
             });
@@ -459,68 +458,70 @@ impl MarshrutkaApp {
         });
     }
 
-    fn load_map(&mut self, ctx: &egui::Context) -> Option<()> {
-        if self.grid.is_none() {
-            let bytes = ctx.try_load_bytes("https://api.chatwars.me/webview/map");
-
-            let (s, actual) = match &bytes {
-                Ok(BytesPoll::Pending { .. }) => {
-                    ctx.request_repaint();
-                    egui::CentralPanel::default().show(ctx, |ui| {
-                        ui.centered_and_justified(|ui| {
-                            ui.label("Loading...");
-                        })
-                    });
-                    return None;
-                }
-                Ok(BytesPoll::Ready { bytes, .. }) => (String::from_utf8_lossy(bytes), true),
-                Err(_) => (
-                    Cow::Borrowed(include_str!(concat!(
-                        env!("CARGO_MANIFEST_DIR"),
-                        "/Map.html"
-                    ))),
-                    false,
-                ),
-            };
-            match MapGrid::parse(s.as_ref()) {
-                Ok(grid) => {
-                    self.grid = Some(grid);
-                    self.actual = actual;
-                }
-                Err(err) => {
-                    egui::CentralPanel::default()
-                        .show(ctx, |ui| ui.label(format!("Invalid map: {err}")));
-                    return None;
-                }
-            };
+    fn load_map(&mut self, ctx: &egui::Context) -> bool {
+        if self.grid.is_some() {
+            return true;
         }
-        Some(())
+        let bytes = ctx.try_load_bytes("https://api.chatwars.me/webview/map");
+
+        let (s, actual) = match &bytes {
+            Ok(BytesPoll::Pending { .. }) => {
+                ctx.request_repaint();
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    ui.centered_and_justified(|ui| {
+                        ui.label("Loading...");
+                    })
+                });
+                return false;
+            }
+            Ok(BytesPoll::Ready { bytes, .. }) => (String::from_utf8_lossy(bytes), true),
+            Err(_) => (
+                Cow::Borrowed(include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/Map.html"
+                ))),
+                false,
+            ),
+        };
+        match MapGrid::parse(s.as_ref()) {
+            Ok(grid) => {
+                self.grid = Some(grid);
+                self.actual = actual;
+                true
+            }
+            Err(err) => {
+                egui::CentralPanel::default()
+                    .show(ctx, |ui| ui.label(format!("Invalid map: {err}")));
+                false
+            }
+        }
     }
 
     fn post_process(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        if self.need_to_save {
-            if let Some(storage) = frame.storage_mut() {
-                self.save_app(storage);
-            }
-            self.need_to_save = false;
-            self.path = self
-                .from
-                .zip(self.to)
-                .and_then(|(from, to)| {
-                    find_path(
-                        self.grid.as_ref().unwrap(),
-                        self.homeland,
-                        self.scroll_of_escape_cost,
-                        (from, to),
-                        self.sort_by,
-                        self.use_soe,
-                        self.use_caravans,
-                    )
-                })
-                .map(Rc::new);
-
-            ctx.request_repaint();
+        if !self.need_to_save {
+            return;
         }
+        if let Some(storage) = frame.storage_mut() {
+            self.save_app(storage);
+        }
+        self.need_to_save = false;
+        self.path = self
+            .from
+            .zip(self.to)
+            .and_then(|(from, to)| {
+                find_path(
+                    self.grid.as_ref().unwrap(),
+                    self.homeland,
+                    self.scroll_of_escape_cost,
+                    (from, to),
+                    self.sort_by,
+                    self.use_soe,
+                    self.use_caravans,
+                )
+            })
+            .map(Rc::new);
+
+        ctx.request_repaint();
     }
 
     fn save_app(&mut self, storage: &mut dyn eframe::Storage) {
@@ -532,10 +533,9 @@ impl eframe::App for MarshrutkaApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // Prepare data
-        if self.load_map(ctx).is_none() {
+        if !self.load_map(ctx) {
             return;
         }
-
         // Side panels
         self.top_menu(ctx);
         self.commands(ctx);
@@ -544,8 +544,10 @@ impl eframe::App for MarshrutkaApp {
         self.settings(ctx);
         self.about(ctx);
 
+        // Central pane
         self.central_pane(ctx);
 
+        // Postprocess state
         self.post_process(ctx, frame);
     }
 
