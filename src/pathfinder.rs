@@ -1,9 +1,9 @@
 use crate::binary_heap::BinaryHeap;
 use crate::cost::{
-    CostComparator, EdgeCost, TotalCost, CARAVAN_CAMPFIRE_CENTER, CARAVAN_CENTER_ENEMY,
-    CARAVAN_CENTER_HOMELAND, CARAVAN_FARLAND_HOMELAND, CARAVAN_FARLAND_NEIGHBOUR,
-    CARAVAN_HOMELAND_FARLAND, CARAVAN_HOMELAND_NEIGHBOUR, CARAVAN_NEIGHBOUR_FARLAND,
-    CARAVAN_NEIGHBOUR_HOMELAND, CARAVAN_NEIGHBOUR_NEIGHBOUR,
+    CostComparator, EdgeCost, EdgeCostRef, TotalCost, CARAVAN_CAMPFIRE_CENTER,
+    CARAVAN_CENTER_ENEMY, CARAVAN_CENTER_HOMELAND, CARAVAN_FARLAND_HOMELAND,
+    CARAVAN_FARLAND_NEIGHBOUR, CARAVAN_HOMELAND_FARLAND, CARAVAN_HOMELAND_NEIGHBOUR,
+    CARAVAN_NEIGHBOUR_FARLAND, CARAVAN_NEIGHBOUR_HOMELAND, CARAVAN_NEIGHBOUR_NEIGHBOUR,
 };
 use crate::grid::{MapGrid, PoI};
 use crate::homeland::Homeland;
@@ -12,8 +12,6 @@ use arrayvec::ArrayVec;
 use std::collections::HashMap;
 use std::iter;
 use strum::IntoEnumIterator;
-
-type EdgeCostRef = &'static EdgeCost;
 
 fn inflight_edges(
     grid: &MapGrid,

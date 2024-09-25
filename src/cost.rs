@@ -15,6 +15,8 @@ pub enum EdgeCost {
     ScrollOfEscape,
 }
 
+pub type EdgeCostRef = &'static EdgeCost;
+
 struct ToFountainMove {
     time: Duration,
     from: CellIndex,

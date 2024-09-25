@@ -8,6 +8,7 @@ use crate::homeland::Homeland;
 use crate::index::{CellIndex, CellIndexCommandSuffix};
 use crate::pathfinder::find_path;
 use eframe::emath::Align;
+use eframe::CreationContext;
 use egui::emath::Rot2;
 use egui::load::BytesPoll;
 use egui::scroll_area::ScrollBarVisibility;
@@ -20,6 +21,7 @@ use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::fmt::Display;
 use std::iter;
+use std::rc::Rc;
 use strum::IntoEnumIterator;
 use time::macros::format_description;
 use time::{Duration, Time};
@@ -45,10 +47,12 @@ pub struct MarshrutkaApp {
     actual: bool,
     arrive_at: Time,
     pause_between_steps: u32,
+    #[serde(skip)]
+    path: Option<Rc<TotalCost>>,
 }
 
 impl MarshrutkaApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
 
@@ -207,12 +211,12 @@ impl MarshrutkaApp {
             });
     }
 
-    fn commands(&mut self, ctx: &egui::Context, path: &Option<TotalCost>) {
+    fn commands(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             let response = egui::CollapsingHeader::new("Commands")
                 .default_open(true)
                 .show(ui, |ui| {
-                    if let Some(path) = path {
+                    if let Some(path) = &self.path {
                         if !path.commands.is_empty()
                             && !matches!(
                                 &path.commands[..],
@@ -222,6 +226,7 @@ impl MarshrutkaApp {
                                 }]
                             )
                         {
+                            let path = path.clone();
                             ScrollArea::horizontal().show(ui, |ui| {
                                 ui.horizontal(|ui| {
                                     fn show_item(
@@ -246,42 +251,50 @@ impl MarshrutkaApp {
                                     show_item(self, ui, '\u{1f463}', path.legs);
                                     show_item(self, ui, '\u{23f0}', path.time);
                                     show_item(self, ui, '\u{1fa99}', path.money);
-                                    ui.label("Arrive at:");
 
-                                    let mut hr = self.arrive_at.hour();
-                                    if egui::DragValue::new(&mut hr)
-                                        .clamp_to_range(true)
-                                        .range(0..=23)
-                                        .ui(ui)
-                                        .changed()
-                                    {
-                                        self.arrive_at = self.arrive_at.replace_hour(hr).unwrap();
-                                        self.need_to_save = true;
-                                    }
-                                    ui.label("h");
-                                    let mut mi = self.arrive_at.minute();
-                                    if egui::DragValue::new(&mut mi)
-                                        .clamp_to_range(true)
-                                        .range(0..=59)
-                                        .ui(ui)
-                                        .changed()
-                                    {
-                                        self.arrive_at = self.arrive_at.replace_minute(mi).unwrap();
-                                        self.need_to_save = true;
-                                    }
-                                    ui.label("m");
-                                    let mut sec = self.arrive_at.second();
-                                    if egui::DragValue::new(&mut sec)
-                                        .clamp_to_range(true)
-                                        .range(0..=59)
-                                        .ui(ui)
-                                        .changed()
-                                    {
-                                        self.arrive_at =
-                                            self.arrive_at.replace_second(sec).unwrap();
-                                        self.need_to_save = true;
-                                    }
-                                    ui.label("s");
+                                    ui.label("Arrive at:");
+                                    ui.scope(|ui| {
+                                        ui.spacing_mut().item_spacing.x = 1.0;
+                                        let formatter = |n, _| {
+                                            let n = n as u32;
+                                            format!("{n:02}")
+                                        };
+                                        let mut hr = self.arrive_at.hour();
+                                        if egui::DragValue::new(&mut hr)
+                                            .custom_formatter(formatter)
+                                            .range(0..=23)
+                                            .ui(ui)
+                                            .changed()
+                                        {
+                                            self.arrive_at =
+                                                self.arrive_at.replace_hour(hr).unwrap();
+                                            self.need_to_save = true;
+                                        }
+                                        ui.label(":");
+                                        let mut mi = self.arrive_at.minute();
+                                        if egui::DragValue::new(&mut mi)
+                                            .custom_formatter(formatter)
+                                            .range(0..=59)
+                                            .ui(ui)
+                                            .changed()
+                                        {
+                                            self.arrive_at =
+                                                self.arrive_at.replace_minute(mi).unwrap();
+                                            self.need_to_save = true;
+                                        }
+                                        ui.label(":");
+                                        let mut sec = self.arrive_at.second();
+                                        if egui::DragValue::new(&mut sec)
+                                            .custom_formatter(formatter)
+                                            .range(0..=59)
+                                            .ui(ui)
+                                            .changed()
+                                        {
+                                            self.arrive_at =
+                                                self.arrive_at.replace_second(sec).unwrap();
+                                            self.need_to_save = true;
+                                        }
+                                    });
                                 });
 
                                 egui::Grid::new("Commands").striped(true).show(ui, |ui| {
@@ -368,25 +381,28 @@ impl MarshrutkaApp {
 impl eframe::App for MarshrutkaApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let bytes = ctx.try_load_bytes("https://api.chatwars.me/webview/map");
-
-        let (s, actual) = match &bytes {
-            Ok(BytesPoll::Pending { .. }) => {
-                ctx.request_repaint();
-                egui::CentralPanel::default().show(ctx, |ui| ui.label("Loading..."));
-                return;
-            }
-            Ok(BytesPoll::Ready { bytes, .. }) => (String::from_utf8_lossy(bytes), true),
-            Err(_) => (
-                Cow::Borrowed(include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/Map.html"
-                ))),
-                false,
-            ),
-        };
-
         if self.grid.is_none() {
+            let bytes = ctx.try_load_bytes("https://api.chatwars.me/webview/map");
+
+            let (s, actual) = match &bytes {
+                Ok(BytesPoll::Pending { .. }) => {
+                    ctx.request_repaint();
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        ui.centered_and_justified(|ui| {
+                            ui.label("Loading...");
+                        })
+                    });
+                    return;
+                }
+                Ok(BytesPoll::Ready { bytes, .. }) => (String::from_utf8_lossy(bytes), true),
+                Err(_) => (
+                    Cow::Borrowed(include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/Map.html"
+                    ))),
+                    false,
+                ),
+            };
             match MapGrid::parse(s.as_ref()) {
                 Ok(grid) => {
                     self.grid = Some(grid);
@@ -400,23 +416,9 @@ impl eframe::App for MarshrutkaApp {
             };
         }
 
-        let path = {
-            self.from.zip(self.to).and_then(|(from, to)| {
-                find_path(
-                    self.grid.as_ref().unwrap(),
-                    self.homeland,
-                    self.scroll_of_escape_cost,
-                    (from, to),
-                    self.sort_by,
-                    self.use_soe,
-                    self.use_caravans,
-                )
-            })
-        };
-
         self.top_menu(ctx);
 
-        self.commands(ctx, &path);
+        self.commands(ctx);
 
         self.settings(ctx);
         self.about(ctx);
@@ -477,7 +479,7 @@ impl eframe::App for MarshrutkaApp {
                 self.need_to_save = true;
             }
             let grid_response = grid_response.body_returned;
-            if let Some((path, (centers, grid_response))) = path.as_ref().zip(grid_response) {
+            if let Some((path, (centers, grid_response))) = self.path.as_ref().zip(grid_response) {
                 let painter = ui.painter_at(grid_response.interact_rect);
                 let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
                 let tip_length = CELL_SIZE / 4.0;
@@ -506,6 +508,22 @@ impl eframe::App for MarshrutkaApp {
                 self.save(storage);
             }
             self.need_to_save = false;
+            self.path = self
+                .from
+                .zip(self.to)
+                .and_then(|(from, to)| {
+                    find_path(
+                        self.grid.as_ref().unwrap(),
+                        self.homeland,
+                        self.scroll_of_escape_cost,
+                        (from, to),
+                        self.sort_by,
+                        self.use_soe,
+                        self.use_caravans,
+                    )
+                })
+                .map(Rc::new);
+
             ctx.request_repaint();
         }
     }
@@ -534,6 +552,7 @@ impl Default for MarshrutkaApp {
             actual: Default::default(),
             arrive_at: Time::MIDNIGHT,
             pause_between_steps: Default::default(),
+            path: Default::default(),
         }
     }
 }
