@@ -405,10 +405,11 @@ impl MarshrutkaApp {
 
             ui.separator();
 
-            let grid_response = egui::CollapsingHeader::new(format!(
-                "Map{} (hint: {HELP1} {HELP2})",
-                if self.actual { "" } else { "[not actual]" },
-            ))
+            let grid_response = egui::CollapsingHeader::new(if self.actual {
+                "Map"
+            } else {
+                "Map (not actual)"
+            })
             .default_open(true)
             .show(ui, |ui| {
                 let InnerResponse {
@@ -421,6 +422,7 @@ impl MarshrutkaApp {
                     response,
                 } = ScrollArea::both()
                     .show(ui, |ui| {
+                        ui.small(format!("Hint: {HELP1} {HELP2})"));
                         let emojis = self.emojis(ui.ctx());
                         self.grid.as_ref().unwrap().ui_content(ui, emojis)
                     })
