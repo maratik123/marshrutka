@@ -1,5 +1,6 @@
 use crate::consts::{
-    BLEACH_ALPHA, CELL_SIZE, FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE, MAP_URL,
+    BLEACH_ALPHA, CELL_SIZE, DEFAULT_MAP_URL, FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER,
+    FONT_CORNER_SIZE,
 };
 use crate::cost::{AggregatedCost, Command, CostComparator, TotalCost};
 use crate::emoji::EmojiMap;
@@ -53,6 +54,7 @@ pub struct MarshrutkaApp {
     pause_between_steps: u32,
     #[serde(skip)]
     path: Option<Rc<TotalCost>>,
+    map_url: String,
 }
 
 impl MarshrutkaApp {
@@ -213,6 +215,23 @@ impl MarshrutkaApp {
                         }
                         ui.label("Pause between steps (s)");
                     });
+                    ui.horizontal(|ui| {
+                        ui.scope(|ui| {
+                            ui.spacing_mut().item_spacing.x = 2.0;
+                            if egui::TextEdit::singleline(&mut self.map_url)
+                                .desired_width(160.0)
+                                .ui(ui)
+                                .changed()
+                            {
+                                self.need_to_save = true;
+                            }
+                            if ui.button("↻").clicked() {
+                                self.map_url = DEFAULT_MAP_URL.to_string();
+                                self.need_to_save = true;
+                            }
+                        });
+                        ui.label("Map URL");
+                    })
                 });
             });
     }
@@ -467,7 +486,7 @@ impl MarshrutkaApp {
         if self.grid.is_some() {
             return true;
         }
-        let bytes = ctx.try_load_bytes(MAP_URL);
+        let bytes = ctx.try_load_bytes(self.map_url.as_str());
 
         let (s, actual) = match &bytes {
             Ok(BytesPoll::Pending { .. }) => {
@@ -592,6 +611,7 @@ impl Default for MarshrutkaApp {
             arrive_at: Time::MIDNIGHT,
             pause_between_steps: Default::default(),
             path: Default::default(),
+            map_url: DEFAULT_MAP_URL.to_string(),
         }
     }
 }
