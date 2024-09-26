@@ -1,5 +1,5 @@
 use crate::consts::{
-    BLEACH_ALPHA, CELL_SIZE, FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE,
+    BLEACH_ALPHA, CELL_SIZE, FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER, FONT_CORNER_SIZE, MAP_URL,
 };
 use crate::cost::{AggregatedCost, Command, CostComparator, TotalCost};
 use crate::emoji::EmojiMap;
@@ -467,7 +467,7 @@ impl MarshrutkaApp {
         if self.grid.is_some() {
             return true;
         }
-        let bytes = ctx.try_load_bytes("https://api.chatwars.me/webview/map");
+        let bytes = ctx.try_load_bytes(MAP_URL);
 
         let (s, actual) = match &bytes {
             Ok(BytesPoll::Pending { .. }) => {
