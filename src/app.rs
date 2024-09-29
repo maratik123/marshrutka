@@ -19,7 +19,6 @@ use egui::{
 };
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
-use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::fmt::Display;
 use std::iter;
@@ -49,7 +48,6 @@ pub struct MarshrutkaApp {
     scroll_of_escape_cost: u32,
     use_soe: bool,
     use_caravans: bool,
-    actual: bool,
     arrive_at: Time,
     pause_between_steps: u32,
     #[serde(skip)]
@@ -71,19 +69,18 @@ impl MarshrutkaApp {
         };
         egui_extras::install_image_loaders(&cc.egui_ctx);
         cc.egui_ctx.set_visuals(Visuals::light());
-        let body_font_family = TextStyle::Body.resolve(&cc.egui_ctx.style()).family;
-        let mut styles = (*cc.egui_ctx.style()).clone();
-
-        styles.text_styles.insert(
-            TextStyle::Name(FONT_CENTER.into()),
-            FontId::new(FONT_CENTER_SIZE, body_font_family.clone()),
-        );
-        styles.text_styles.insert(
-            TextStyle::Name(FONT_CORNER.into()),
-            FontId::new(FONT_CORNER_SIZE, body_font_family),
-        );
-        styles.visuals = Visuals::dark();
-        cc.egui_ctx.set_style(styles);
+        cc.egui_ctx.all_styles_mut(|styles| {
+            let body_font_family = TextStyle::Body.resolve(styles).family;
+            styles.text_styles.insert(
+                TextStyle::Name(FONT_CENTER.into()),
+                FontId::new(FONT_CENTER_SIZE, body_font_family.clone()),
+            );
+            styles.text_styles.insert(
+                TextStyle::Name(FONT_CORNER.into()),
+                FontId::new(FONT_CORNER_SIZE, body_font_family),
+            );
+            styles.visuals = Visuals::dark();
+        });
 
         result
     }
@@ -132,7 +129,7 @@ impl MarshrutkaApp {
                     .show(ui, |ui| {
                         let mut sort_selector = |ui: &mut Ui, label, val: &mut CostComparator| {
                             ui.label(label);
-                            egui::ComboBox::from_id_source(label)
+                            egui::ComboBox::from_id_salt(label)
                                 .width(0.0)
                                 .selected_text(val.as_str())
                                 .show_ui(ui, |ui| {
@@ -206,7 +203,7 @@ impl MarshrutkaApp {
                     });
                     ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.pause_between_steps)
-                            .clamp_to_range(true)
+                            .clamp_existing_to_range(true)
                             .range(0..=1000)
                             .ui(ui)
                             .changed()
@@ -420,39 +417,35 @@ impl MarshrutkaApp {
 
             ui.separator();
 
-            let grid_response = egui::CollapsingHeader::new(if self.actual {
-                "Map"
-            } else {
-                "Map (not actual)"
-            })
-            .id_source("Map")
-            .default_open(true)
-            .show(ui, |ui| {
-                let InnerResponse {
-                    inner:
-                        MapGridResponse {
-                            centers,
-                            left: from,
-                            right: to,
-                        },
-                    response,
-                } = ScrollArea::both()
-                    .show(ui, |ui| {
-                        ui.small(format!("Hint: {HELP1} {HELP2})"));
-                        let emojis = self.emojis(ui.ctx());
-                        self.grid.as_ref().unwrap().ui_content(ui, emojis)
-                    })
-                    .inner;
-                if let Some(from) = from {
-                    self.from = Some(from);
-                    self.need_to_save = true;
-                }
-                if let Some(to) = to {
-                    self.to = Some(to);
-                    self.need_to_save = true;
-                }
-                (centers, response)
-            });
+            let grid_response = egui::CollapsingHeader::new("Map")
+                .id_salt("Map")
+                .default_open(true)
+                .show(ui, |ui| {
+                    let InnerResponse {
+                        inner:
+                            MapGridResponse {
+                                centers,
+                                left: from,
+                                right: to,
+                            },
+                        response,
+                    } = ScrollArea::both()
+                        .show(ui, |ui| {
+                            ui.small(format!("Hint: {HELP1} {HELP2})"));
+                            let emojis = self.emojis(ui.ctx());
+                            self.grid.as_ref().unwrap().ui_content(ui, emojis)
+                        })
+                        .inner;
+                    if let Some(from) = from {
+                        self.from = Some(from);
+                        self.need_to_save = true;
+                    }
+                    if let Some(to) = to {
+                        self.to = Some(to);
+                        self.need_to_save = true;
+                    }
+                    (centers, response)
+                });
             if grid_response.fully_closed() || grid_response.fully_open() {
                 self.need_to_save = true;
             }
@@ -488,34 +481,41 @@ impl MarshrutkaApp {
         }
         let bytes = ctx.try_load_bytes(self.map_url.as_str());
 
-        let (s, actual) = match &bytes {
+        let s = match &bytes {
             Ok(BytesPoll::Pending { .. }) => {
                 ctx.request_repaint();
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.centered_and_justified(|ui| {
                         ui.label("Loading...");
-                    })
+                    });
                 });
                 return false;
             }
-            Ok(BytesPoll::Ready { bytes, .. }) => (String::from_utf8_lossy(bytes), true),
-            Err(_) => (
-                Cow::Borrowed(include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/Map.html"
-                ))),
-                false,
-            ),
+            Ok(BytesPoll::Ready { bytes, .. }) => String::from_utf8_lossy(bytes),
+            Err(e) => {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    ui.centered_and_justified(|ui| {
+                        ui.vertical(|ui| {
+                            ui.heading("Error:");
+                            ui.label(e.to_string())
+                        });
+                    });
+                });
+                return false;
+            }
         };
         match MapGrid::parse(s.as_ref()) {
             Ok(grid) => {
                 self.grid = Some(grid);
-                self.actual = actual;
                 true
             }
             Err(err) => {
-                egui::CentralPanel::default()
-                    .show(ctx, |ui| ui.label(format!("Invalid map: {err}")));
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    ui.centered_and_justified(|ui| {
+                        ui.heading("Invalid map");
+                        ui.label(err.to_string());
+                    });
+                });
                 false
             }
         }
@@ -607,7 +607,6 @@ impl Default for MarshrutkaApp {
             scroll_of_escape_cost: 50,
             use_soe: true,
             use_caravans: true,
-            actual: Default::default(),
             arrive_at: Time::MIDNIGHT,
             pause_between_steps: Default::default(),
             path: Default::default(),

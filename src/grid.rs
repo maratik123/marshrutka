@@ -126,7 +126,7 @@ impl MapGrid {
                     .enumerate()
                     .map(|(i, cell)| {
                         let center = ScrollArea::both()
-                            .id_source(i)
+                            .id_salt(i)
                             .show(ui, |ui| {
                                 let (center, new_left, new_right) = cell.ui_content(ui, emoji_map);
                                 if new_left.is_some() {
