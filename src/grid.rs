@@ -2,23 +2,31 @@ use crate::cell::{cell_parts, Cell, CellElement};
 use crate::consts::{ARROW_TIP_CIRCLE, ARROW_WIDTH, CELL_SIZE, GRID_SPACING};
 use crate::emoji::EmojiMap;
 use crate::homeland::Homeland;
-use crate::index::CellIndex;
+use crate::index::{CellIndex, Pos};
 use anyhow::{anyhow, Result};
 use eframe::emath::Rot2;
 use egui::ecolor::ParseHexColorError;
 use egui::{Color32, Grid, InnerResponse, Painter, Pos2, ScrollArea, Stroke, Ui, Vec2};
+use enum_map::{Enum, EnumMap};
 use num_integer::Roots;
 use simplecss::DeclarationTokenizer;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
-use tl::{HTMLTag, NodeHandle, Parser, ParserOptions};
+use strum::EnumCount;
+use tl::HTMLTag;
 
-#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
+#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug, EnumCount, Enum)]
 pub enum PoI {
-    Campfire(Homeland),
-    Fountain(Homeland),
+    Campfire,
+    Fountain,
+}
+
+impl PoI {
+    pub const fn count() -> usize {
+        PoI::COUNT
+    }
 }
 
 #[derive(Default)]
@@ -27,7 +35,7 @@ pub struct MapGrid {
     /// Row major
     pub grid: Vec<Cell>,
     pub index: HashMap<CellIndex, usize>,
-    pub poi: HashMap<PoI, usize>,
+    pub poi: EnumMap<PoI, EnumMap<Homeland, HashMap<Pos, usize>>>,
 }
 
 pub struct MapGridResponse {
@@ -38,7 +46,7 @@ pub struct MapGridResponse {
 
 impl MapGrid {
     pub fn parse(s: &str) -> Result<Self> {
-        let dom = tl::parse(s, ParserOptions::new())?;
+        let dom = tl::parse(s, tl::ParserOptions::new())?;
         let parser = dom.parser();
         let map_grid = dom
             .get_elements_by_class_name("map-grid")
@@ -82,7 +90,7 @@ impl MapGrid {
                                 .unwrap_or_default()
                         )
                     })?;
-                let poi = cell_parts(&center, &bottom_right);
+                let poi = cell_parts(&center);
                 Ok((
                     Cell {
                         bg_color,
@@ -101,8 +109,18 @@ impl MapGrid {
         let poi = grid
             .iter()
             .enumerate()
-            .filter_map(|(i, cell)| cell.poi.map(|poi| (poi, i)))
-            .collect();
+            .filter_map(|(i, cell)| {
+                cell.poi.and_then(|poi| match cell.index {
+                    CellIndex::Homeland { homeland, pos } => Some((poi, homeland, pos, i)),
+                    _ => None,
+                })
+            })
+            .fold(EnumMap::default(), |mut acc, (poi, homeland, pos, i)| {
+                let map: &mut EnumMap<_, HashMap<_, _>> = &mut acc[poi];
+                let map = &mut map[homeland];
+                map.insert(pos, i);
+                acc
+            });
         Ok(Self {
             square_size,
             grid,
@@ -167,7 +185,7 @@ pub fn arrow(painter: &Painter, rot: Rot2, tip_length: f32, from: Pos2, to: Pos2
     painter.circle_filled(to, ARROW_TIP_CIRCLE, color);
 }
 
-fn parse_cell_element(map_cell: &HTMLTag, parser: &Parser, class: &str) -> Option<CellElement> {
+fn parse_cell_element(map_cell: &HTMLTag, parser: &tl::Parser, class: &str) -> Option<CellElement> {
     map_cell.children().top().iter().find_map(|node_handle| {
         to_tag_with_class(node_handle, parser, class)
             .and_then(|html_tag| parse_text(html_tag, parser))
@@ -175,8 +193,8 @@ fn parse_cell_element(map_cell: &HTMLTag, parser: &Parser, class: &str) -> Optio
 }
 
 fn to_tag_with_class<'p, 'buf>(
-    node_handle: &NodeHandle,
-    parser: &'p Parser<'buf>,
+    node_handle: &tl::NodeHandle,
+    parser: &'p tl::Parser<'buf>,
     class: &str,
 ) -> Option<&'p HTMLTag<'buf>> {
     node_handle
@@ -192,7 +210,7 @@ fn has_class(html_tag: &HTMLTag, class: &str) -> bool {
         .is_some_and(|bytes| bytes == class)
 }
 
-fn parse_text(html_tag: &HTMLTag, parser: &Parser) -> Option<CellElement> {
+fn parse_text(html_tag: &HTMLTag, parser: &tl::Parser) -> Option<CellElement> {
     html_tag.children().top().iter().find_map(|node_handle| {
         node_handle
             .get(parser)

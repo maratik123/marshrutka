@@ -1097,6 +1097,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui_extras",
+ "enum-map",
  "env_logger",
  "log",
  "num-integer",

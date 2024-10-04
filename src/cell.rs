@@ -3,7 +3,6 @@ use crate::consts::{
 };
 use crate::emoji::{EmojiCode, EmojiMap};
 use crate::grid::PoI;
-use crate::homeland::Homeland;
 use crate::index::CellIndex;
 use arrayvec::ArrayVec;
 use egui::{
@@ -165,22 +164,13 @@ impl Cell {
     }
 }
 
-pub fn cell_parts(center: &Option<CellElement>, bottom_right: &Option<CellElement>) -> Option<PoI> {
-    match (center, bottom_right) {
-        (
-            Some(CellElement::Emoji(EmojiCode('\u{1f525}', None))),
-            Some(CellElement::Emoji(EmojiCode(ch, None))),
-        ) => Homeland::try_from(*ch).map(PoI::Campfire).ok(),
-        (
-            Some(CellElement::Emoji(EmojiCode('\u{26f2}', None))),
-            Some(CellElement::Emoji(EmojiCode(ch, None))),
-        )
-        | (
-            Some(CellElement::Emoji(EmojiCode('\u{26f2}', Some('\u{fe0f}')))),
-            Some(CellElement::Emoji(EmojiCode(ch, None))),
-        ) => Homeland::try_from(*ch).map(PoI::Fountain).ok(),
-        _ => None,
-    }
+pub fn cell_parts(center: &Option<CellElement>) -> Option<PoI> {
+    Some(match center {
+        Some(CellElement::Emoji(EmojiCode('\u{1f525}', None))) => PoI::Campfire,
+        Some(CellElement::Emoji(EmojiCode('\u{26f2}', None)))
+        | Some(CellElement::Emoji(EmojiCode('\u{26f2}', Some('\u{fe0f}')))) => PoI::Fountain,
+        _ => return None,
+    })
 }
 
 impl From<String> for CellElement {

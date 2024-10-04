@@ -1,9 +1,10 @@
 use crate::emoji::EmojiCode;
 use crate::index::{Border, BorderDirection};
+use enum_map::Enum;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
-use strum::{EnumIter, IntoStaticStr};
+use strum::{EnumCount, EnumIter, IntoStaticStr};
 
 #[derive(
     Deserialize,
@@ -19,6 +20,8 @@ use strum::{EnumIter, IntoStaticStr};
     Ord,
     PartialOrd,
     IntoStaticStr,
+    EnumCount,
+    Enum,
 )]
 pub enum Homeland {
     #[default]
@@ -80,6 +83,10 @@ impl Homeland {
             Homeland::Green => Homeland::Blue,
             Homeland::Yellow => Homeland::Red,
         }
+    }
+
+    pub const fn count() -> usize {
+        Homeland::COUNT
     }
 }
 
