@@ -53,6 +53,7 @@ pub struct MarshrutkaApp {
     #[serde(skip)]
     path: Option<Rc<TotalCost>>,
     map_url: String,
+    route_guru_skill: u32,
 }
 
 impl MarshrutkaApp {
@@ -365,7 +366,7 @@ impl MarshrutkaApp {
                                                     CellIndexCommandSuffix(command.to)
                                                 )
                                             }
-                                            AggregatedCost::Caravan { .. } => {
+                                            AggregatedCost::Caravan(_) => {
                                                 format!(
                                                     "/car_{}",
                                                     CellIndexCommandSuffix(command.to)
@@ -465,7 +466,7 @@ impl MarshrutkaApp {
                             AggregatedCost::NoMove => continue,
                             AggregatedCost::CentralMove { .. } => Color32::RED,
                             AggregatedCost::StandardMove { .. } => Color32::BLUE,
-                            AggregatedCost::Caravan { .. } => Color32::DARK_GREEN,
+                            AggregatedCost::Caravan(_) => Color32::DARK_GREEN,
                             AggregatedCost::ScrollOfEscape { .. } => Color32::BROWN,
                         }
                         .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),
@@ -604,13 +605,14 @@ impl Default for MarshrutkaApp {
             homeland: Default::default(),
             need_to_save: Default::default(),
             sort_by: (CostComparator::Legs, CostComparator::Money),
-            scroll_of_escape_cost: 50,
+            scroll_of_escape_cost: 24,
             use_soe: true,
             use_caravans: true,
             arrive_at: Time::MIDNIGHT,
             pause_between_steps: Default::default(),
             path: Default::default(),
             map_url: DEFAULT_MAP_URL.to_string(),
+            route_guru_skill: Default::default(),
         }
     }
 }

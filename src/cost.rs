@@ -7,16 +7,20 @@ use std::ops::{Add, AddAssign};
 use strum::{EnumIter, IntoStaticStr};
 use time::Duration;
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
 pub enum EdgeCost {
     NoMove,
     CentralMove,
     StandardMove,
-    Caravan { time: Duration, money: u32 },
+    Caravan(CaravanCost),
     ScrollOfEscape,
 }
 
-pub type EdgeCostRef = &'static EdgeCost;
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Copy, Clone)]
+pub struct CaravanCost {
+    pub time: Duration,
+    pub money: u32,
+}
 
 struct ToFountainMove {
     time: Duration,
@@ -38,7 +42,7 @@ impl EdgeCost {
     pub const fn money(&self, scroll_of_escape_cost: u32) -> u32 {
         match self {
             EdgeCost::NoMove | EdgeCost::StandardMove | EdgeCost::CentralMove => 0,
-            EdgeCost::Caravan { money, .. } => *money,
+            EdgeCost::Caravan(CaravanCost { money, .. }) => *money,
             EdgeCost::ScrollOfEscape => scroll_of_escape_cost,
         }
     }
@@ -47,7 +51,7 @@ impl EdgeCost {
         match self {
             EdgeCost::StandardMove => Duration::minutes(3),
             EdgeCost::CentralMove => Duration::seconds(10),
-            EdgeCost::Caravan { time, .. } => *time,
+            EdgeCost::Caravan(CaravanCost { time, .. }) => *time,
             EdgeCost::NoMove | EdgeCost::ScrollOfEscape => Duration::ZERO,
         }
     }
@@ -72,7 +76,7 @@ pub enum AggregatedCost {
     NoMove,
     CentralMove { time: Duration },
     StandardMove { time: Duration, legs: u32 },
-    Caravan { time: Duration, money: u32 },
+    Caravan(CaravanCost),
     ScrollOfEscape { money: u32 },
 }
 
@@ -82,7 +86,7 @@ impl AggregatedCost {
             AggregatedCost::ScrollOfEscape { .. } | AggregatedCost::NoMove => Duration::ZERO,
             AggregatedCost::CentralMove { time }
             | AggregatedCost::StandardMove { time, .. }
-            | AggregatedCost::Caravan { time, .. } => *time,
+            | AggregatedCost::Caravan(CaravanCost { time, .. }) => *time,
         }
     }
 
@@ -91,7 +95,7 @@ impl AggregatedCost {
             AggregatedCost::NoMove
             | AggregatedCost::CentralMove { .. }
             | AggregatedCost::StandardMove { .. } => 0,
-            AggregatedCost::Caravan { money, .. }
+            AggregatedCost::Caravan(CaravanCost { money, .. })
             | AggregatedCost::ScrollOfEscape { money, .. } => *money,
         }
     }
@@ -100,15 +104,15 @@ impl AggregatedCost {
         match self {
             AggregatedCost::NoMove
             | AggregatedCost::CentralMove { .. }
-            | AggregatedCost::Caravan { .. }
+            | AggregatedCost::Caravan(_)
             | AggregatedCost::ScrollOfEscape { .. } => 0,
             AggregatedCost::StandardMove { legs, .. } => *legs,
         }
     }
 }
 
-impl From<(&EdgeCost, u32)> for AggregatedCost {
-    fn from((edge_cost, scroll_of_escape_cost): (&EdgeCost, u32)) -> Self {
+impl From<(EdgeCost, u32)> for AggregatedCost {
+    fn from((edge_cost, scroll_of_escape_cost): (EdgeCost, u32)) -> Self {
         match edge_cost {
             EdgeCost::NoMove => AggregatedCost::NoMove,
             EdgeCost::CentralMove => AggregatedCost::CentralMove {
@@ -118,10 +122,7 @@ impl From<(&EdgeCost, u32)> for AggregatedCost {
                 legs: edge_cost.legs(),
                 time: edge_cost.time(),
             },
-            EdgeCost::Caravan { money, time } => AggregatedCost::Caravan {
-                money: *money,
-                time: *time,
-            },
+            EdgeCost::Caravan(caravan_cost) => AggregatedCost::Caravan(caravan_cost),
             EdgeCost::ScrollOfEscape => AggregatedCost::ScrollOfEscape {
                 money: scroll_of_escape_cost,
             },
@@ -150,55 +151,16 @@ impl TotalCost {
     }
 }
 
-const CARAVAN_12_24: EdgeCost = EdgeCost::Caravan {
-    money: 12,
-    time: Duration::minutes(24),
-};
-const CARAVAN_30_24: EdgeCost = EdgeCost::Caravan {
-    money: 30,
-    time: Duration::minutes(24),
-};
-const CARAVAN_24_48: EdgeCost = EdgeCost::Caravan {
-    money: 24,
-    time: Duration::minutes(48),
-};
-const CARAVAN_60_48: EdgeCost = EdgeCost::Caravan {
-    money: 60,
-    time: Duration::minutes(48),
-};
-
-// HOMELAND - homeland campfire
-// NEIGHBOUR - neighbour campfire
-// FARLAND - far land campfire
-// ENEMY - non-homeland campfire (neighbour or farland)
-// CAMPFIRE - any campfire (homeland or enemy)
-// CENTER - forum
-pub const CARAVAN_CAMPFIRE_CENTER: &EdgeCost = &CARAVAN_12_24;
-pub const CARAVAN_CENTER_HOMELAND: &EdgeCost = &CARAVAN_12_24;
-pub const CARAVAN_CENTER_ENEMY: &EdgeCost = &CARAVAN_30_24;
-pub const CARAVAN_NEIGHBOUR_HOMELAND: &EdgeCost = &CARAVAN_12_24;
-pub const CARAVAN_HOMELAND_NEIGHBOUR: &EdgeCost = &CARAVAN_30_24;
-pub const CARAVAN_HOMELAND_FARLAND: &EdgeCost = &CARAVAN_60_48;
-pub const CARAVAN_FARLAND_HOMELAND: &EdgeCost = &CARAVAN_24_48;
-pub const CARAVAN_NEIGHBOUR_FARLAND: &EdgeCost = &CARAVAN_30_24;
-pub const CARAVAN_FARLAND_NEIGHBOUR: &EdgeCost = &CARAVAN_30_24;
-pub const CARAVAN_NEIGHBOUR_NEIGHBOUR: &EdgeCost = &CARAVAN_60_48;
-
 impl TotalCost {
     pub fn time_as_ms(&self) -> String {
         self.time.to_string()
     }
 }
 
-impl AddAssign<(&'static EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
+impl AddAssign<(EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
     fn add_assign(
         &mut self,
-        (edge_cost, scroll_of_escape_cost, from, to): (
-            &'static EdgeCost,
-            u32,
-            CellIndex,
-            CellIndex,
-        ),
+        (edge_cost, scroll_of_escape_cost, from, to): (EdgeCost, u32, CellIndex, CellIndex),
     ) {
         let legs = edge_cost.legs();
         let money = edge_cost.money(scroll_of_escape_cost);
@@ -239,7 +201,7 @@ impl AddAssign<(&'static EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
                     EdgeCost::NoMove => AggregatedCost::NoMove,
                     EdgeCost::CentralMove => AggregatedCost::CentralMove { time },
                     EdgeCost::StandardMove => AggregatedCost::StandardMove { time, legs },
-                    EdgeCost::Caravan { .. } => AggregatedCost::Caravan { time, money },
+                    EdgeCost::Caravan(_) => AggregatedCost::Caravan(CaravanCost { time, money }),
                     EdgeCost::ScrollOfEscape => AggregatedCost::ScrollOfEscape { money },
                 },
                 from,
@@ -285,10 +247,10 @@ impl AddAssign<&ToFountainMove> for TotalCost {
     }
 }
 
-impl Add<(&'static EdgeCost, u32, CellIndex, CellIndex)> for &TotalCost {
+impl Add<(EdgeCost, u32, CellIndex, CellIndex)> for &TotalCost {
     type Output = TotalCost;
 
-    fn add(self, rhs: (&'static EdgeCost, u32, CellIndex, CellIndex)) -> Self::Output {
+    fn add(self, rhs: (EdgeCost, u32, CellIndex, CellIndex)) -> Self::Output {
         let mut ret = self.clone();
         ret += rhs;
         ret

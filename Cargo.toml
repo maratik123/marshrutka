@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Marat Bukharov <marat.buharov@gmail.com>"]
 edition = "2021"
 include = ["LICENSE-APACHE", "**/*.rs", "Cargo.toml"]
-rust-version = "1.81"
+rust-version = "1.82"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -23,7 +23,10 @@ egui = "0.29"
 egui_extras = { version = "0.29", features = ["http"] }
 enum-map = "2.7"
 log = "0.4"
+num = "0.4"
 num-integer = "0.1"
+num-rational = "0.4"
+num-traits = "0.2"
 resvg = { version = "0.44", default-features = false }
 simplecss = "0.2"
 smallvec = "1"

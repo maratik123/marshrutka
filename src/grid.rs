@@ -5,16 +5,18 @@ use crate::homeland::Homeland;
 use crate::index::{CellIndex, Pos};
 use anyhow::{anyhow, Result};
 use eframe::emath::Rot2;
+use egui::ahash::HashSet;
 use egui::ecolor::ParseHexColorError;
 use egui::{Color32, Grid, InnerResponse, Painter, Pos2, ScrollArea, Stroke, Ui, Vec2};
 use enum_map::{Enum, EnumMap};
 use num_integer::Roots;
 use simplecss::DeclarationTokenizer;
 use std::borrow::Cow;
+use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
-use strum::EnumCount;
+use strum::{EnumCount, IntoEnumIterator};
 use tl::HTMLTag;
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug, EnumCount, Enum)]
@@ -23,19 +25,14 @@ pub enum PoI {
     Fountain,
 }
 
-impl PoI {
-    pub const fn count() -> usize {
-        PoI::COUNT
-    }
-}
-
 #[derive(Default)]
 pub struct MapGrid {
     pub square_size: usize,
     /// Row major
     pub grid: Vec<Cell>,
     pub index: HashMap<CellIndex, usize>,
-    pub poi: EnumMap<PoI, EnumMap<Homeland, HashMap<Pos, usize>>>,
+    pub poi: EnumMap<PoI, HashSet<CellIndex>>,
+    pub poi_by_homeland: EnumMap<PoI, EnumMap<Homeland, HashSet<Pos>>>,
 }
 
 pub struct MapGridResponse {
@@ -62,10 +59,19 @@ impl MapGrid {
         if square_size * square_size != map_cells.len() {
             return Err(anyhow!("Map grid is not square: {}", map_cells.len()));
         }
-        let (grid, index): (Vec<_>, HashMap<_, _>) = map_cells
+        let (mut grid, index): (Vec<_>, HashMap<_, _>) = map_cells
             .into_iter()
             .enumerate()
-            .map(|(i, map_cell)| {
+            .scan((0usize, 0usize), |(x, y), item| {
+                if x == &square_size {
+                    *x = 0;
+                    *y += 1;
+                }
+                let ret = Some((*x, *y, item));
+                *x += 1;
+                ret
+            })
+            .map(|(x, y, (i, map_cell))| {
                 let bg_color = parse_bg_color_from_style(map_cell)?;
                 let top_left = parse_cell_element(map_cell, parser, "top-left-text");
                 let top_right = parse_cell_element(map_cell, parser, "top-right-text");
@@ -101,31 +107,48 @@ impl MapGrid {
                         center,
                         index,
                         poi,
+                        x: x as u8,
+                        y: y as u8,
+                        nearest_campfire: OnceCell::default(),
                     },
                     (index, i),
                 ))
             })
             .collect::<Result<_>>()?;
-        let poi = grid
+        let (poi, poi_by_homeland) = grid
             .iter()
-            .enumerate()
-            .filter_map(|(i, cell)| {
-                cell.poi.and_then(|poi| match cell.index {
-                    CellIndex::Homeland { homeland, pos } => Some((poi, homeland, pos, i)),
-                    _ => None,
-                })
-            })
-            .fold(EnumMap::default(), |mut acc, (poi, homeland, pos, i)| {
-                let map: &mut EnumMap<_, HashMap<_, _>> = &mut acc[poi];
-                let map = &mut map[homeland];
-                map.insert(pos, i);
-                acc
-            });
+            .filter_map(|cell| cell.poi.map(|poi| (poi, cell.index)))
+            .fold(
+                (EnumMap::default(), EnumMap::default()),
+                |(mut acc_poi, mut acc_poi_by_homeland), (poi, cell_index)| {
+                    let set: &mut HashSet<_> = &mut acc_poi[poi];
+                    set.insert(cell_index);
+
+                    if let CellIndex::Homeland { homeland, pos } = cell_index {
+                        let map: &mut EnumMap<_, _> = &mut acc_poi_by_homeland[poi];
+                        let set: &mut HashSet<_> = &mut map[homeland];
+                        set.insert(pos);
+                    }
+
+                    (acc_poi, acc_poi_by_homeland)
+                },
+            );
+        for homeland in Homeland::iter() {
+            for cell in grid.iter_mut() {
+                let campfires = &poi_by_homeland[PoI::Campfire][homeland];
+                match cell.index {
+                    CellIndex::Center => {}
+                    CellIndex::Homeland { homeland, pos } => {}
+                    CellIndex::Border { border, shift } => {}
+                }
+            }
+        }
         Ok(Self {
             square_size,
             grid,
             index,
             poi,
+            poi_by_homeland,
         })
     }
 
@@ -172,6 +195,18 @@ impl MapGrid {
 
     pub const fn homeland_size(&self) -> usize {
         (self.square_size - 1) / 2
+    }
+
+    pub fn distance(&self, from: usize, to: usize) -> usize {
+        let from = &self.grid[from];
+        let to = &self.grid[to];
+        let (from_x, from_y) = (from.x as usize, from.y as usize);
+        let (to_x, to_y) = (to.x as usize, to.y as usize);
+        let [x_min, x_max] = minmax(from_x, to_x);
+        let [y_min, y_max] = minmax(from_y, to_y);
+        let dist_x = x_max - x_min;
+        let dist_y = y_max - y_min;
+        dist_x + dist_y
     }
 }
 
@@ -250,5 +285,13 @@ impl Error for ParseHexColorErrorWrapper {
 impl Display for ParseHexColorErrorWrapper {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+fn minmax<T: Ord>(v1: T, v2: T) -> [T; 2] {
+    if v1 <= v2 {
+        [v1, v2]
+    } else {
+        [v2, v1]
     }
 }

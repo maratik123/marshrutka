@@ -1,17 +1,13 @@
 use crate::binary_heap::BinaryHeap;
-use crate::cost::{
-    CostComparator, EdgeCost, EdgeCostRef, TotalCost, CARAVAN_CAMPFIRE_CENTER,
-    CARAVAN_CENTER_ENEMY, CARAVAN_CENTER_HOMELAND, CARAVAN_FARLAND_HOMELAND,
-    CARAVAN_FARLAND_NEIGHBOUR, CARAVAN_HOMELAND_FARLAND, CARAVAN_HOMELAND_NEIGHBOUR,
-    CARAVAN_NEIGHBOUR_FARLAND, CARAVAN_NEIGHBOUR_HOMELAND, CARAVAN_NEIGHBOUR_NEIGHBOUR,
-};
+use crate::cost::{CaravanCost, CostComparator, EdgeCost, TotalCost};
 use crate::grid::{MapGrid, PoI};
 use crate::homeland::Homeland;
 use crate::index::{Border, BorderDirection, CellIndex, Pos};
-use arrayvec::ArrayVec;
+use crate::skill::RouteGuru;
+use smallvec::SmallVec;
 use std::collections::HashMap;
-use std::iter;
 use strum::IntoEnumIterator;
+use time::Duration;
 
 fn inflight_edges(
     grid: &MapGrid,
@@ -19,8 +15,9 @@ fn inflight_edges(
     vertex: CellIndex,
     use_soe: bool,
     use_caravans: bool,
-) -> ArrayVec<(CellIndex, EdgeCostRef), 9> {
-    let mut ret = ArrayVec::new();
+    route_guru: RouteGuru,
+) -> SmallVec<[(CellIndex, EdgeCost); 21]> {
+    let mut ret = SmallVec::new();
     let homeland_size = grid.homeland_size();
     match vertex {
         CellIndex::Center => {
@@ -28,41 +25,21 @@ fn inflight_edges(
             ret.extend(Border::iter().map(|border| {
                 (
                     CellIndex::Border { border, shift: 1 },
-                    &EdgeCost::CentralMove,
+                    EdgeCost::CentralMove,
                 )
             }));
-            if use_caravans {
-                // 3
-                ret.extend(
-                    homeland
-                        .neighbours()
-                        .into_iter()
-                        .chain(iter::once(homeland.farland()))
-                        .map(|enemy| {
-                            (
-                                grid.grid[grid.poi[&PoI::Campfire(enemy)]].index,
-                                CARAVAN_CENTER_ENEMY,
-                            )
-                        }),
-                );
-                // 1
-                ret.push((
-                    grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
-                    CARAVAN_CENTER_HOMELAND,
-                ));
-            }
         }
         CellIndex::Border { border, shift } => {
             // 1
             ret.push(if shift == 1 {
-                (CellIndex::Center, &EdgeCost::CentralMove)
+                (CellIndex::Center, EdgeCost::CentralMove)
             } else {
                 (
                     CellIndex::Border {
                         border,
                         shift: shift - 1,
                     },
-                    &EdgeCost::StandardMove,
+                    EdgeCost::StandardMove,
                 )
             });
             // 0..1
@@ -72,7 +49,7 @@ fn inflight_edges(
                         border,
                         shift: shift + 1,
                     },
-                    &EdgeCost::StandardMove,
+                    EdgeCost::StandardMove,
                 ));
             }
             // 2
@@ -82,7 +59,7 @@ fn inflight_edges(
                         homeland: neighbour,
                         pos: border.direction().adjacent_pos_u8(shift),
                     },
-                    &EdgeCost::StandardMove,
+                    EdgeCost::StandardMove,
                 )
             }));
         }
@@ -103,7 +80,7 @@ fn inflight_edges(
                         pos: Pos { x: x - 1, y },
                     }
                 },
-                &EdgeCost::StandardMove,
+                EdgeCost::StandardMove,
             ));
             // 1
             ret.push((
@@ -118,7 +95,7 @@ fn inflight_edges(
                         pos: Pos { x, y: y - 1 },
                     }
                 },
-                &EdgeCost::StandardMove,
+                EdgeCost::StandardMove,
             ));
             // 0..1
             if (x as usize) < grid.homeland_size() {
@@ -127,7 +104,7 @@ fn inflight_edges(
                         homeland: vertex_homeland,
                         pos: Pos { x: x + 1, y },
                     },
-                    &EdgeCost::StandardMove,
+                    EdgeCost::StandardMove,
                 ));
             }
             // 0..1
@@ -137,70 +114,21 @@ fn inflight_edges(
                         homeland: vertex_homeland,
                         pos: Pos { x, y: y + 1 },
                     },
-                    &EdgeCost::StandardMove,
+                    EdgeCost::StandardMove,
                 ));
             }
-            if use_caravans {
-                if let Some(PoI::Campfire(campfire)) = grid.grid[grid.index[&vertex]].poi {
-                    // 1
-                    ret.push((CellIndex::Center, CARAVAN_CAMPFIRE_CENTER));
-                    fn add_neighbour_paths(
-                        arr: &mut ArrayVec<(CellIndex, EdgeCostRef), 9>,
-                        grid: &MapGrid,
-                        campfire: Homeland,
-                        edge_cost: EdgeCostRef,
-                    ) {
-                        arr.extend(campfire.neighbours().into_iter().map(|neighbour_campfire| {
-                            (
-                                grid.grid[grid.poi[&PoI::Campfire(neighbour_campfire)]].index,
-                                edge_cost,
-                            )
-                        }));
-                    }
-                    if campfire == homeland {
-                        // 1
-                        ret.push((
-                            grid.grid[grid.poi[&PoI::Campfire(campfire.farland())]].index,
-                            CARAVAN_HOMELAND_FARLAND,
-                        ));
-                        // 2
-                        add_neighbour_paths(&mut ret, grid, campfire, CARAVAN_HOMELAND_NEIGHBOUR);
-                    } else if campfire == homeland.farland() {
-                        // 1
-                        ret.push((
-                            grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
-                            CARAVAN_FARLAND_HOMELAND,
-                        ));
-                        // 2
-                        add_neighbour_paths(&mut ret, grid, campfire, CARAVAN_FARLAND_NEIGHBOUR);
-                    } else {
-                        // 1
-                        ret.push((
-                            grid.grid[grid.poi[&PoI::Campfire(homeland)]].index,
-                            CARAVAN_NEIGHBOUR_HOMELAND,
-                        ));
-                        // 1
-                        ret.push((
-                            grid.grid[grid.poi[&PoI::Campfire(campfire.farland())]].index,
-                            CARAVAN_NEIGHBOUR_NEIGHBOUR,
-                        ));
-                        // 1
-                        ret.push((
-                            grid.grid[grid.poi[&PoI::Campfire(homeland.farland())]].index,
-                            CARAVAN_NEIGHBOUR_FARLAND,
-                        ));
-                    }
-                }
-            }
         }
     }
-    // 0..1
-    if use_soe {
-        let homeland_campfire = grid.grid[grid.poi[&PoI::Campfire(homeland)]].index;
-        if homeland_campfire != vertex {
-            ret.push((homeland_campfire, &EdgeCost::ScrollOfEscape));
-        }
+    if use_caravans {
+        for poi in &grid.poi[PoI::Campfire] {}
     }
+    // // 0..1
+    // if use_soe {
+    //     let homeland_campfire = grid.grid[grid.poi[&PoI::Campfire(homeland)]].index;
+    //     if homeland_campfire != vertex {
+    //         ret.push((homeland_campfire, &EdgeCost::ScrollOfEscape));
+    //     }
+    // }
     ret
 }
 
@@ -249,6 +177,35 @@ pub fn find_path(
         }
     }
     None
+}
+
+const CARAVAN_TIME: Duration = Duration::minutes(4);
+const CARAVAN_TO_HOME_MONEY: u32 = 2;
+const CARAVAN_TO_CENTER_MONEY: u32 = 2;
+const CARAVAN_MONEY: u32 = 5;
+
+fn caravan_cost(
+    grid: &MapGrid,
+    homeland: Homeland,
+    from: CellIndex,
+    to: CellIndex,
+    route_guru: RouteGuru,
+) -> CaravanCost {
+    let distance = grid.distance(grid.index[&from], grid.index[&to]) as u32;
+
+    let money = match to {
+        CellIndex::Center => CARAVAN_TO_CENTER_MONEY,
+        CellIndex::Homeland {
+            homeland: to_homeland,
+            ..
+        } if to_homeland == homeland => CARAVAN_TO_HOME_MONEY,
+        _ => CARAVAN_MONEY,
+    } * distance;
+
+    let mut time = route_guru.time(CARAVAN_TIME).unwrap_or(CARAVAN_TIME);
+    time *= distance;
+
+    CaravanCost { money, time }
 }
 
 #[cfg(test)]

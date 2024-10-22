@@ -84,10 +84,6 @@ impl Homeland {
             Homeland::Yellow => Homeland::Red,
         }
     }
-
-    pub const fn count() -> usize {
-        Homeland::COUNT
-    }
 }
 
 impl TryFrom<EmojiCode> for Homeland {

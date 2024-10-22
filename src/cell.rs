@@ -3,12 +3,15 @@ use crate::consts::{
 };
 use crate::emoji::{EmojiCode, EmojiMap};
 use crate::grid::PoI;
-use crate::index::CellIndex;
+use crate::homeland::Homeland;
+use crate::index::{CellIndex, Pos};
 use arrayvec::ArrayVec;
 use egui::{
     Align2, Color32, Margin, Painter, Pos2, Rect, Sense, TextStyle, TextureHandle, Ui, Vec2,
 };
+use enum_map::EnumMap;
 use std::borrow::Cow;
+use std::cell::OnceCell;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
@@ -27,6 +30,9 @@ pub struct Cell {
     pub center: Option<CellElement>,
     pub index: CellIndex,
     pub poi: Option<PoI>,
+    pub x: u8,
+    pub y: u8,
+    pub nearest_campfire: OnceCell<EnumMap<Homeland, Pos>>,
 }
 
 struct DrawAttrs {

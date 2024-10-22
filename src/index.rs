@@ -74,10 +74,6 @@ impl Border {
             Border::RG | Border::YB => BorderDirection::Vertical,
         }
     }
-
-    pub const fn count() -> usize {
-        Self::COUNT
-    }
 }
 
 impl Display for Border {
