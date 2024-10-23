@@ -8,3 +8,4 @@ mod grid;
 mod homeland;
 mod index;
 mod pathfinder;
+mod skill;

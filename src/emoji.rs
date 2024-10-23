@@ -173,7 +173,7 @@ impl TryFrom<&[char]> for EmojiCode {
         Ok(match value {
             [c0] => (*c0).into(),
             [c0, c1] => (*c0, *c1).into(),
-            _ => Err(())?,
+            _ => return Err(()),
         })
     }
 }

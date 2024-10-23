@@ -7,7 +7,7 @@ use crate::emoji::EmojiMap;
 use crate::grid::{arrow, MapGrid, MapGridResponse};
 use crate::homeland::Homeland;
 use crate::index::{CellIndex, CellIndexCommandSuffix};
-use crate::pathfinder::find_path;
+use crate::pathfinder::{find_path, FindPathSettings};
 use eframe::emath::Align;
 use eframe::CreationContext;
 use egui::emath::Rot2;
@@ -24,6 +24,7 @@ use std::fmt::Display;
 use std::iter;
 use std::rc::Rc;
 use strum::IntoEnumIterator;
+use time::convert::{Hour, Second};
 use time::macros::format_description;
 use time::{Duration, Time};
 
@@ -53,6 +54,7 @@ pub struct MarshrutkaApp {
     #[serde(skip)]
     path: Option<Rc<TotalCost>>,
     map_url: String,
+    route_guru_skill: u32,
 }
 
 impl MarshrutkaApp {
@@ -165,7 +167,10 @@ impl MarshrutkaApp {
                     ui.add_space(8.0);
                     if cfg!(debug_assertions) {
                         egui::warn_if_debug_build(ui);
+                        ui.add_space(4.0);
                     }
+                    ui.hyperlink_to("Support chat", "https://t.me/marshrutka_support");
+                    ui.add_space(4.0);
                     ui.hyperlink_to(
                         "Support and source code",
                         "https://github.com/maratik123/marshrutka",
@@ -193,6 +198,17 @@ impl MarshrutkaApp {
                             }
                         });
                     ui.horizontal(|ui| {
+                        if egui::DragValue::new(&mut self.route_guru_skill)
+                            .clamp_existing_to_range(true)
+                            .range(0..=1)
+                            .ui(ui)
+                            .changed()
+                        {
+                            self.need_to_save = true;
+                        }
+                        ui.label("Route Guru skill level");
+                    });
+                    ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.scroll_of_escape_cost)
                             .ui(ui)
                             .changed()
@@ -204,7 +220,7 @@ impl MarshrutkaApp {
                     ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.pause_between_steps)
                             .clamp_existing_to_range(true)
-                            .range(0..=1000)
+                            .range(0..=(Second::per(Hour) as u32))
                             .ui(ui)
                             .changed()
                         {
@@ -365,7 +381,7 @@ impl MarshrutkaApp {
                                                     CellIndexCommandSuffix(command.to)
                                                 )
                                             }
-                                            AggregatedCost::Caravan { .. } => {
+                                            AggregatedCost::Caravan(_) => {
                                                 format!(
                                                     "/car_{}",
                                                     CellIndexCommandSuffix(command.to)
@@ -465,7 +481,7 @@ impl MarshrutkaApp {
                             AggregatedCost::NoMove => continue,
                             AggregatedCost::CentralMove { .. } => Color32::RED,
                             AggregatedCost::StandardMove { .. } => Color32::BLUE,
-                            AggregatedCost::Caravan { .. } => Color32::DARK_GREEN,
+                            AggregatedCost::Caravan(_) => Color32::DARK_GREEN,
                             AggregatedCost::ScrollOfEscape { .. } => Color32::BROWN,
                         }
                         .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),
@@ -527,13 +543,16 @@ impl MarshrutkaApp {
             .zip(self.to)
             .and_then(|(from, to)| {
                 find_path(
-                    self.grid.as_ref().unwrap(),
-                    self.homeland,
-                    self.scroll_of_escape_cost,
                     (from, to),
-                    self.sort_by,
-                    self.use_soe,
-                    self.use_caravans,
+                    FindPathSettings {
+                        homeland: self.homeland,
+                        scroll_of_escape_cost: self.scroll_of_escape_cost,
+                        use_soe: self.use_soe,
+                        use_caravans: self.use_caravans,
+                        route_guru: self.route_guru_skill.into(),
+                        sort_by: self.sort_by,
+                        grid: self.grid.as_ref().unwrap(),
+                    },
                 )
             })
             .map(Rc::new);
@@ -604,13 +623,14 @@ impl Default for MarshrutkaApp {
             homeland: Default::default(),
             need_to_save: Default::default(),
             sort_by: (CostComparator::Legs, CostComparator::Money),
-            scroll_of_escape_cost: 50,
+            scroll_of_escape_cost: 24,
             use_soe: true,
             use_caravans: true,
             arrive_at: Time::MIDNIGHT,
             pause_between_steps: Default::default(),
             path: Default::default(),
             map_url: DEFAULT_MAP_URL.to_string(),
+            route_guru_skill: Default::default(),
         }
     }
 }

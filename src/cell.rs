@@ -9,7 +9,9 @@ use arrayvec::ArrayVec;
 use egui::{
     Align2, Color32, Margin, Painter, Pos2, Rect, Sense, TextStyle, TextureHandle, Ui, Vec2,
 };
+use enum_map::EnumMap;
 use std::borrow::Cow;
+use std::cell::OnceCell;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
@@ -28,6 +30,9 @@ pub struct Cell {
     pub center: Option<CellElement>,
     pub index: CellIndex,
     pub poi: Option<PoI>,
+    pub x: i8,
+    pub y: i8,
+    pub nearest_campfire: OnceCell<EnumMap<Homeland, Option<CellIndex>>>,
 }
 
 struct DrawAttrs {
@@ -163,24 +168,34 @@ impl Cell {
             ),
         );
     }
+
+    pub fn distance(&self, other: &Cell) -> usize {
+        let Cell {
+            x: from_x,
+            y: from_y,
+            ..
+        } = self;
+        let Cell {
+            x: to_x, y: to_y, ..
+        } = other;
+        distance(
+            (*from_x as isize, *from_y as isize),
+            (*to_x as isize, *to_y as isize),
+        )
+    }
 }
 
-pub fn cell_parts(center: &Option<CellElement>, bottom_right: &Option<CellElement>) -> Option<PoI> {
-    match (center, bottom_right) {
-        (
-            Some(CellElement::Emoji(EmojiCode('\u{1f525}', None))),
-            Some(CellElement::Emoji(EmojiCode(ch, None))),
-        ) => Homeland::try_from(*ch).map(PoI::Campfire).ok(),
-        (
-            Some(CellElement::Emoji(EmojiCode('\u{26f2}', None))),
-            Some(CellElement::Emoji(EmojiCode(ch, None))),
-        )
-        | (
-            Some(CellElement::Emoji(EmojiCode('\u{26f2}', Some('\u{fe0f}')))),
-            Some(CellElement::Emoji(EmojiCode(ch, None))),
-        ) => Homeland::try_from(*ch).map(PoI::Fountain).ok(),
-        _ => None,
-    }
+fn distance((from_x, from_y): (isize, isize), (to_x, to_y): (isize, isize)) -> usize {
+    from_x.abs_diff(to_x) + from_y.abs_diff(to_y)
+}
+
+pub fn cell_parts(center: &Option<CellElement>) -> Option<PoI> {
+    Some(match center {
+        Some(CellElement::Emoji(EmojiCode('\u{1f525}', None))) => PoI::Campfire,
+        Some(CellElement::Emoji(EmojiCode('\u{26f2}', None)))
+        | Some(CellElement::Emoji(EmojiCode('\u{26f2}', Some('\u{fe0f}')))) => PoI::Fountain,
+        _ => return None,
+    })
 }
 
 impl From<String> for CellElement {
