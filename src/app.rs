@@ -447,7 +447,7 @@ impl MarshrutkaApp {
                         response,
                     } = ScrollArea::both()
                         .show(ui, |ui| {
-                            ui.small(format!("Hint: {HELP1} {HELP2})"));
+                            ui.small(format!("Hint: {HELP1} {HELP2}"));
                             let emojis = self.emojis(ui.ctx());
                             self.grid.as_ref().unwrap().ui_content(ui, emojis)
                         })
