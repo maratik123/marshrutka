@@ -4,7 +4,7 @@ use crate::consts::{
 use crate::emoji::{EmojiCode, EmojiMap};
 use crate::grid::PoI;
 use crate::homeland::Homeland;
-use crate::index::{CellIndex, Pos};
+use crate::index::CellIndex;
 use arrayvec::ArrayVec;
 use egui::{
     Align2, Color32, Margin, Painter, Pos2, Rect, Sense, TextStyle, TextureHandle, Ui, Vec2,
@@ -32,7 +32,7 @@ pub struct Cell {
     pub poi: Option<PoI>,
     pub x: i8,
     pub y: i8,
-    pub nearest_campfire: OnceCell<EnumMap<Homeland, Pos>>,
+    pub nearest_campfire: OnceCell<EnumMap<Homeland, Option<CellIndex>>>,
 }
 
 struct DrawAttrs {
@@ -168,6 +168,25 @@ impl Cell {
             ),
         );
     }
+
+    pub fn distance(&self, other: &Cell) -> usize {
+        let Cell {
+            x: from_x,
+            y: from_y,
+            ..
+        } = self;
+        let Cell {
+            x: to_x, y: to_y, ..
+        } = other;
+        distance(
+            (*from_x as isize, *from_y as isize),
+            (*to_x as isize, *to_y as isize),
+        )
+    }
+}
+
+fn distance((from_x, from_y): (isize, isize), (to_x, to_y): (isize, isize)) -> usize {
+    from_x.abs_diff(to_x) + from_y.abs_diff(to_y)
 }
 
 pub fn cell_parts(center: &Option<CellElement>) -> Option<PoI> {

@@ -33,7 +33,6 @@ pub struct MapGrid {
     pub grid: Vec<Cell>,
     pub index: HashMap<CellIndex, usize>,
     pub poi: EnumMap<PoI, HashSet<CellIndex>>,
-    pub poi_by_homeland: EnumMap<PoI, EnumMap<Homeland, HashSet<Pos>>>,
 }
 
 pub struct MapGridResponse {
@@ -148,51 +147,93 @@ impl MapGrid {
                     (acc_poi, acc_poi_by_homeland)
                 },
             );
-        for homeland in Homeland::iter() {
-            let campfires = &poi_by_homeland[PoI::Campfire][homeland];
-            let farland = homeland.farland();
-            let (vert_border, vert_neighbour) =
-                homeland.neighbour_border(BorderDirection::Vertical);
-            let (hor_border, hor_neighbour) =
-                homeland.neighbour_border(BorderDirection::Horizontal);
-            let cached_nearest_campfires = [vert_border, hor_border]
-                .into_iter()
-                .flat_map(|border| {
-                    (1..=(max_coord as u8))
-                        .into_iter()
-                        .map(|shift| CellIndex::Border { border, shift })
-                })
-                .chain(iter::once(CellIndex::Center));
+        let nearest_campfires = Homeland::iter()
+            .flat_map(|homeland| {
+                let campfires = &poi_by_homeland[PoI::Campfire][homeland];
+                let grid_ref = grid.as_slice();
+                let index_ref = &index;
+                let farland = homeland.farland();
+                let (vert_border, vert_neighbour) =
+                    homeland.neighbour_border(BorderDirection::Vertical);
+                let (hor_border, hor_neighbour) =
+                    homeland.neighbour_border(BorderDirection::Horizontal);
+                let cached_nearest_campfires: HashMap<_, _> = [vert_border, hor_border]
+                    .into_iter()
+                    .flat_map(|border| {
+                        (1..=(max_coord as u8))
+                            .map(move |shift| CellIndex::Border { border, shift })
+                    })
+                    .chain(iter::once(CellIndex::Center))
+                    .filter_map(|cell_index| {
+                        nearest_campfire(cell_index, homeland, campfires, grid_ref, index_ref)
+                            .map(|nearest_campfire| (cell_index, nearest_campfire))
+                    })
+                    .collect();
 
-            for cell in grid.iter_mut() {
-                let (proj_x, proj_y) = match cell.index {
-                    CellIndex::Center => (cell.x, cell.y),
-                    CellIndex::Homeland {
-                        homeland: cell_homeland,
-                        ..
-                    } if cell_homeland == homeland => (cell.x, cell.y),
-                    CellIndex::Homeland {
-                        homeland: cell_homeland,
-                        ..
-                    } if cell_homeland == farland => (cell.x, cell.y),
-                    CellIndex::Homeland {
-                        homeland: cell_homeland,
-                        ..
-                    } if cell_homeland == vert_neighbour => (cell.x, cell.y),
-                    CellIndex::Homeland {
-                        homeland: cell_homeland,
-                        ..
-                    } if cell_homeland == hor_neighbour => (cell.x, cell.y),
-                    CellIndex::Border { border, .. } => {}
-                };
-            }
-        }
+                grid_ref.iter().enumerate().filter_map(move |(i, cell)| {
+                    cached_nearest_campfires
+                        .get(&cell.index)
+                        .copied()
+                        .or_else(|| {
+                            let Cell {
+                                x: cell_x,
+                                y: cell_y,
+                                ..
+                            } = cell;
+                            let (cell_x, cell_y) = (*cell_x as isize, *cell_y as isize);
+                            let (proj_x, proj_y) = match cell.index {
+                                CellIndex::Homeland {
+                                    homeland: cell_homeland,
+                                    ..
+                                } if cell_homeland == homeland => (cell_x, cell_y),
+                                CellIndex::Homeland {
+                                    homeland: cell_homeland,
+                                    ..
+                                } if cell_homeland == vert_neighbour => (0, cell_y),
+                                CellIndex::Homeland {
+                                    homeland: cell_homeland,
+                                    ..
+                                } if cell_homeland == hor_neighbour => (cell_x, 0),
+                                CellIndex::Homeland {
+                                    homeland: cell_homeland,
+                                    ..
+                                } if cell_homeland == farland => (0, 0),
+                                CellIndex::Border { border, .. }
+                                    if border != vert_border && border != hor_border =>
+                                {
+                                    (0, 0)
+                                }
+                                _ => unreachable!(),
+                            };
+                            let i = xy_to_i(max_coord_i, square_size, proj_x, proj_y);
+                            nearest_campfire(
+                                grid_ref[i].index,
+                                homeland,
+                                campfires,
+                                grid_ref,
+                                index_ref,
+                            )
+                        })
+                        .map(|nearest_campfire| (i, homeland, nearest_campfire))
+                })
+            })
+            .fold(
+                vec![EnumMap::<Homeland, Option<CellIndex>>::default(); grid.len()],
+                |mut acc, (i, homeland, nearest_campfire)| {
+                    acc[i][homeland] = Some(nearest_campfire);
+                    acc
+                },
+            );
+        grid.iter_mut()
+            .zip(nearest_campfires)
+            .for_each(|(cell, nearest_campfire)| {
+                cell.nearest_campfire.set(nearest_campfire).unwrap();
+            });
         Ok(Self {
             square_size,
             grid,
             index,
             poi,
-            poi_by_homeland,
         })
     }
 
@@ -240,24 +281,42 @@ impl MapGrid {
     pub const fn homeland_size(&self) -> usize {
         self.square_size / 2
     }
-
-    pub fn distance(&self, from: usize, to: usize) -> usize {
-        let from = &self.grid[from];
-        let to = &self.grid[to];
-        let (from_x, from_y) = (from.x as isize, from.y as isize);
-        let (to_x, to_y) = (to.x as isize, to.y as isize);
-        let dist_x = from_x.abs_diff(to_x);
-        let dist_y = from_y.abs_diff(to_y);
-        dist_x + dist_y
-    }
 }
 
 const fn xy_to_i(homeland_size: isize, square_size: usize, x: isize, y: isize) -> usize {
     (x + homeland_size) as usize + (y + homeland_size) as usize * square_size
 }
 
-fn nearest_campfire() -> CellIndex {
-    
+fn nearest_campfire(
+    from: CellIndex,
+    homeland: Homeland,
+    positions: &HashSet<Pos>,
+    grid: &[Cell],
+    index: &HashMap<CellIndex, usize>,
+) -> Option<CellIndex> {
+    if let CellIndex::Homeland {
+        homeland: from_homeland,
+        pos: from_pos,
+    } = &from
+    {
+        if &homeland == from_homeland && positions.contains(from_pos) {
+            return Some(from);
+        }
+    }
+    let from_cell = &grid[index[&from]];
+    positions
+        .iter()
+        .map(|&pos| CellIndex::Homeland { homeland, pos })
+        .map(|campfire_index| index[&campfire_index])
+        .map(|i| &grid[i])
+        .min_by_key(|&campfire_cell| {
+            (
+                from_cell.distance(campfire_cell),
+                (campfire_cell.x as isize).unsigned_abs(),
+                (campfire_cell.y as isize).unsigned_abs(),
+            )
+        })
+        .map(|campfire_cell| campfire_cell.index)
 }
 
 pub fn arrow(painter: &Painter, rot: Rot2, tip_length: f32, from: Pos2, to: Pos2, color: Color32) {

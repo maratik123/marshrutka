@@ -6,6 +6,7 @@ use crate::index::{Border, BorderDirection, CellIndex, Pos};
 use crate::skill::RouteGuru;
 use smallvec::SmallVec;
 use std::collections::HashMap;
+use std::iter;
 use strum::IntoEnumIterator;
 use time::Duration;
 
@@ -119,27 +120,61 @@ fn inflight_edges(
             }
         }
     }
+    // 0,16
     if use_caravans {
-        for poi in &grid.poi[PoI::Campfire] {}
+        let campfires = &grid.poi[PoI::Campfire];
+        if vertex == CellIndex::Center || campfires.contains(&vertex) {
+            for caravan_dest in iter::once(CellIndex::Center)
+                .chain(campfires.iter().copied())
+                .filter(|campfire| campfire != &vertex)
+            {
+                ret.push((
+                    caravan_dest,
+                    EdgeCost::Caravan(caravan_cost(
+                        grid,
+                        homeland,
+                        vertex,
+                        caravan_dest,
+                        route_guru,
+                    )),
+                ));
+            }
+        }
     }
-    // // 0..1
-    // if use_soe {
-    //     let homeland_campfire = grid.grid[grid.poi[&PoI::Campfire(homeland)]].index;
-    //     if homeland_campfire != vertex {
-    //         ret.push((homeland_campfire, &EdgeCost::ScrollOfEscape));
-    //     }
-    // }
+    // 0..1
+    if use_soe {
+        if let Some(nearest_campfire) = grid.grid[grid.index[&vertex]]
+            .nearest_campfire
+            .get()
+            .and_then(|nearest_campfire| nearest_campfire[homeland])
+        {
+            ret.push((nearest_campfire, EdgeCost::ScrollOfEscape));
+        }
+    }
     ret
 }
 
+pub struct FindPathSettings<'a> {
+    pub scroll_of_escape_cost: u32,
+    pub use_soe: bool,
+    pub use_caravans: bool,
+    pub route_guru: RouteGuru,
+    pub sort_by: (CostComparator, CostComparator),
+    pub homeland: Homeland,
+    pub grid: &'a MapGrid,
+}
+
 pub fn find_path(
-    grid: &MapGrid,
-    homeland: Homeland,
-    scroll_of_escape_cost: u32,
     (from, to): (CellIndex, CellIndex),
-    (c1, c2): (CostComparator, CostComparator),
-    use_soe: bool,
-    use_caravans: bool,
+    FindPathSettings {
+        grid,
+        scroll_of_escape_cost,
+        use_soe,
+        use_caravans,
+        route_guru,
+        sort_by: (c1, c2),
+        homeland,
+    }: FindPathSettings,
 ) -> Option<TotalCost> {
     if from == to {
         return Some(TotalCost::new(from));
@@ -157,9 +192,14 @@ pub fn find_path(
         if comparator(&cost, &dist[&lowest_cost_index]).is_gt() {
             continue;
         }
-        for (edge_index, edge_cost) in
-            inflight_edges(grid, homeland, lowest_cost_index, use_soe, use_caravans)
-        {
+        for (edge_index, edge_cost) in inflight_edges(
+            grid,
+            homeland,
+            lowest_cost_index,
+            use_soe,
+            use_caravans,
+            route_guru,
+        ) {
             let next = &cost
                 + (
                     edge_cost,
@@ -191,7 +231,7 @@ fn caravan_cost(
     to: CellIndex,
     route_guru: RouteGuru,
 ) -> CaravanCost {
-    let distance = grid.distance(grid.index[&from], grid.index[&to]) as u32;
+    let distance = grid.grid[grid.index[&from]].distance(&grid.grid[grid.index[&to]]) as u32;
 
     let money = match to {
         CellIndex::Center => CARAVAN_TO_CENTER_MONEY,

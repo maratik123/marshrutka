@@ -3,7 +3,7 @@ use num_traits::identities::One;
 use time::Duration;
 
 #[derive(Copy, Clone)]
-pub struct RouteGuru(u32);
+pub struct RouteGuru(pub u32);
 
 impl RouteGuru {
     pub fn time(&self, time: Duration) -> Option<Duration> {
@@ -36,3 +36,9 @@ macro_rules! try_from_route_guru_to_ratio {
 }
 
 try_from_route_guru_to_ratio!(u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize);
+
+impl From<u32> for RouteGuru {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
