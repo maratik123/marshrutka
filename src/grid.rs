@@ -310,11 +310,9 @@ fn nearest_campfire(
         .map(|campfire_index| index[&campfire_index])
         .map(|i| &grid[i])
         .min_by_key(|&campfire_cell| {
-            (
-                from_cell.distance(campfire_cell),
-                (campfire_cell.x as isize).unsigned_abs(),
-                (campfire_cell.y as isize).unsigned_abs(),
-            )
+            let x = (campfire_cell.x as isize).unsigned_abs();
+            let y = (campfire_cell.y as isize).unsigned_abs();
+            (from_cell.distance(campfire_cell), x + y, x, y)
         })
         .map(|campfire_cell| campfire_cell.index)
 }

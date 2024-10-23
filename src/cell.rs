@@ -178,14 +178,14 @@ impl Cell {
         let Cell {
             x: to_x, y: to_y, ..
         } = other;
-        distance(
+        manhattan_distance(
             (*from_x as isize, *from_y as isize),
             (*to_x as isize, *to_y as isize),
         )
     }
 }
 
-fn distance((from_x, from_y): (isize, isize), (to_x, to_y): (isize, isize)) -> usize {
+fn manhattan_distance((from_x, from_y): (isize, isize), (to_x, to_y): (isize, isize)) -> usize {
     from_x.abs_diff(to_x) + from_y.abs_diff(to_y)
 }
 
