@@ -63,17 +63,27 @@ impl Homeland {
         }
     }
 
-    pub const fn neighbour(&self, border_direction: BorderDirection) -> Border {
+    pub const fn neighbour_border(&self, border_direction: BorderDirection) -> (Border, Homeland) {
         match (self, border_direction) {
-            (Homeland::Blue, BorderDirection::Horizontal) => Border::BR,
-            (Homeland::Blue, BorderDirection::Vertical) => Border::YB,
-            (Homeland::Red, BorderDirection::Horizontal) => Border::BR,
-            (Homeland::Red, BorderDirection::Vertical) => Border::RG,
-            (Homeland::Green, BorderDirection::Horizontal) => Border::GY,
-            (Homeland::Green, BorderDirection::Vertical) => Border::RG,
-            (Homeland::Yellow, BorderDirection::Horizontal) => Border::GY,
-            (Homeland::Yellow, BorderDirection::Vertical) => Border::YB,
+            (Homeland::Blue, BorderDirection::Horizontal) => (Border::BR, Homeland::Red),
+            (Homeland::Blue, BorderDirection::Vertical) => (Border::YB, Homeland::Yellow),
+            (Homeland::Red, BorderDirection::Horizontal) => (Border::BR, Homeland::Blue),
+            (Homeland::Red, BorderDirection::Vertical) => (Border::RG, Homeland::Green),
+            (Homeland::Green, BorderDirection::Horizontal) => (Border::GY, Homeland::Yellow),
+            (Homeland::Green, BorderDirection::Vertical) => (Border::RG, Homeland::Red),
+            (Homeland::Yellow, BorderDirection::Horizontal) => (Border::GY, Homeland::Green),
+            (Homeland::Yellow, BorderDirection::Vertical) => (Border::YB, Homeland::Blue),
         }
+    }
+
+    pub const fn border(&self, border_direction: BorderDirection) -> Border {
+        let (border, _) = self.neighbour_border(border_direction);
+        border
+    }
+
+    pub const fn neighbour(&self, border_direction: BorderDirection) -> Homeland {
+        let (_, homeland) = self.neighbour_border(border_direction);
+        homeland
     }
 
     pub const fn farland(&self) -> Homeland {

@@ -30,8 +30,8 @@ pub struct Cell {
     pub center: Option<CellElement>,
     pub index: CellIndex,
     pub poi: Option<PoI>,
-    pub x: u8,
-    pub y: u8,
+    pub x: i8,
+    pub y: i8,
     pub nearest_campfire: OnceCell<EnumMap<Homeland, Pos>>,
 }
 

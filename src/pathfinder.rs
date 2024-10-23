@@ -71,7 +71,7 @@ fn inflight_edges(
             ret.push((
                 if x == 1 {
                     CellIndex::Border {
-                        border: vertex_homeland.neighbour(BorderDirection::Vertical),
+                        border: vertex_homeland.border(BorderDirection::Vertical),
                         shift: y,
                     }
                 } else {
@@ -86,7 +86,7 @@ fn inflight_edges(
             ret.push((
                 if y == 1 {
                     CellIndex::Border {
-                        border: vertex_homeland.neighbour(BorderDirection::Horizontal),
+                        border: vertex_homeland.border(BorderDirection::Horizontal),
                         shift: x,
                     }
                 } else {

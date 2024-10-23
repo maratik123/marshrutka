@@ -2,7 +2,7 @@ use crate::cell::{cell_parts, Cell, CellElement};
 use crate::consts::{ARROW_TIP_CIRCLE, ARROW_WIDTH, CELL_SIZE, GRID_SPACING};
 use crate::emoji::EmojiMap;
 use crate::homeland::Homeland;
-use crate::index::{CellIndex, Pos};
+use crate::index::{BorderDirection, CellIndex, Pos};
 use anyhow::{anyhow, Result};
 use eframe::emath::Rot2;
 use egui::ahash::HashSet;
@@ -16,6 +16,7 @@ use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
+use std::iter;
 use strum::{EnumCount, IntoEnumIterator};
 use tl::HTMLTag;
 
@@ -59,12 +60,14 @@ impl MapGrid {
         if square_size * square_size != map_cells.len() {
             return Err(anyhow!("Map grid is not square: {}", map_cells.len()));
         }
+        let max_coord = square_size / 2;
+        let max_coord_i = max_coord as isize;
         let (mut grid, index): (Vec<_>, HashMap<_, _>) = map_cells
             .into_iter()
             .enumerate()
-            .scan((0usize, 0usize), |(x, y), item| {
-                if x == &square_size {
-                    *x = 0;
+            .scan((-max_coord_i, -max_coord_i), |(x, y), item| {
+                if x == &(max_coord_i + 1) {
+                    *x = -max_coord_i;
                     *y += 1;
                 }
                 let ret = Some((*x, *y, item));
@@ -107,14 +110,26 @@ impl MapGrid {
                         center,
                         index,
                         poi,
-                        x: x as u8,
-                        y: y as u8,
+                        x: x as i8,
+                        y: y as i8,
                         nearest_campfire: OnceCell::default(),
                     },
                     (index, i),
                 ))
             })
             .collect::<Result<_>>()?;
+        if let Some(i) = index.get(&CellIndex::Center) {
+            let cell = &grid[*i];
+            if cell.x != 0 || cell.y != 0 {
+                return Err(anyhow!(
+                    "Unexpected center position: ({}, {})",
+                    cell.x,
+                    cell.y
+                ));
+            }
+        } else {
+            return Err(anyhow!("Center is not found"));
+        }
         let (poi, poi_by_homeland) = grid
             .iter()
             .filter_map(|cell| cell.poi.map(|poi| (poi, cell.index)))
@@ -134,13 +149,42 @@ impl MapGrid {
                 },
             );
         for homeland in Homeland::iter() {
+            let campfires = &poi_by_homeland[PoI::Campfire][homeland];
+            let farland = homeland.farland();
+            let (vert_border, vert_neighbour) =
+                homeland.neighbour_border(BorderDirection::Vertical);
+            let (hor_border, hor_neighbour) =
+                homeland.neighbour_border(BorderDirection::Horizontal);
+            let cached_nearest_campfires = [vert_border, hor_border]
+                .into_iter()
+                .flat_map(|border| {
+                    (1..=(max_coord as u8))
+                        .into_iter()
+                        .map(|shift| CellIndex::Border { border, shift })
+                })
+                .chain(iter::once(CellIndex::Center));
+
             for cell in grid.iter_mut() {
-                let campfires = &poi_by_homeland[PoI::Campfire][homeland];
-                match cell.index {
-                    CellIndex::Center => {}
-                    CellIndex::Homeland { homeland, pos } => {}
-                    CellIndex::Border { border, shift } => {}
-                }
+                let (proj_x, proj_y) = match cell.index {
+                    CellIndex::Center => (cell.x, cell.y),
+                    CellIndex::Homeland {
+                        homeland: cell_homeland,
+                        ..
+                    } if cell_homeland == homeland => (cell.x, cell.y),
+                    CellIndex::Homeland {
+                        homeland: cell_homeland,
+                        ..
+                    } if cell_homeland == farland => (cell.x, cell.y),
+                    CellIndex::Homeland {
+                        homeland: cell_homeland,
+                        ..
+                    } if cell_homeland == vert_neighbour => (cell.x, cell.y),
+                    CellIndex::Homeland {
+                        homeland: cell_homeland,
+                        ..
+                    } if cell_homeland == hor_neighbour => (cell.x, cell.y),
+                    CellIndex::Border { border, .. } => {}
+                };
             }
         }
         Ok(Self {
@@ -194,20 +238,26 @@ impl MapGrid {
     }
 
     pub const fn homeland_size(&self) -> usize {
-        (self.square_size - 1) / 2
+        self.square_size / 2
     }
 
     pub fn distance(&self, from: usize, to: usize) -> usize {
         let from = &self.grid[from];
         let to = &self.grid[to];
-        let (from_x, from_y) = (from.x as usize, from.y as usize);
-        let (to_x, to_y) = (to.x as usize, to.y as usize);
-        let [x_min, x_max] = minmax(from_x, to_x);
-        let [y_min, y_max] = minmax(from_y, to_y);
-        let dist_x = x_max - x_min;
-        let dist_y = y_max - y_min;
+        let (from_x, from_y) = (from.x as isize, from.y as isize);
+        let (to_x, to_y) = (to.x as isize, to.y as isize);
+        let dist_x = from_x.abs_diff(to_x);
+        let dist_y = from_y.abs_diff(to_y);
         dist_x + dist_y
     }
+}
+
+const fn xy_to_i(homeland_size: isize, square_size: usize, x: isize, y: isize) -> usize {
+    (x + homeland_size) as usize + (y + homeland_size) as usize * square_size
+}
+
+fn nearest_campfire() -> CellIndex {
+    
 }
 
 pub fn arrow(painter: &Painter, rot: Rot2, tip_length: f32, from: Pos2, to: Pos2, color: Color32) {
@@ -285,13 +335,5 @@ impl Error for ParseHexColorErrorWrapper {
 impl Display for ParseHexColorErrorWrapper {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
-    }
-}
-
-fn minmax<T: Ord>(v1: T, v2: T) -> [T; 2] {
-    if v1 <= v2 {
-        [v1, v2]
-    } else {
-        [v2, v1]
     }
 }
