@@ -1,6 +1,6 @@
 use crate::consts::{
-    BLEACH_ALPHA, CELL_SIZE, DEFAULT_MAP_URL, FONT_CENTER, FONT_CENTER_SIZE, FONT_CORNER,
-    FONT_CORNER_SIZE,
+    BLEACH_ALPHA, CELL_SIZE, DEFAULT_MAPS_URL, DEFAULT_MAP_URL, FONT_CENTER, FONT_CENTER_SIZE,
+    FONT_CORNER, FONT_CORNER_SIZE,
 };
 use crate::cost::{AggregatedCost, Command, CostComparator, TotalCost};
 use crate::emoji::EmojiMap;
@@ -54,6 +54,9 @@ pub struct MarshrutkaApp {
     #[serde(skip)]
     path: Option<Rc<TotalCost>>,
     map_url: String,
+    maps_url: String,
+    map_tag: String,
+    update_from: bool,
     route_guru_skill: u32,
 }
 
@@ -244,7 +247,53 @@ impl MarshrutkaApp {
                             }
                         });
                         ui.label("Map URL");
-                    })
+                    });
+                    ui.horizontal(|ui| {
+                        ui.scope(|ui| {
+                            ui.spacing_mut().item_spacing.x = 2.0;
+                            if egui::TextEdit::singleline(&mut self.maps_url)
+                                .desired_width(160.0)
+                                .ui(ui)
+                                .changed()
+                            {
+                                self.need_to_save = true;
+                            }
+                            if ui.button("↻").clicked() {
+                                self.maps_url = DEFAULT_MAPS_URL.to_string();
+                                self.need_to_save = true;
+                            }
+                        });
+                        ui.label("Personal maps URL prefix");
+                    });
+                    ui.horizontal(|ui| {
+                        ui.scope(|ui| {
+                            ui.spacing_mut().item_spacing.x = 2.0;
+                            if egui::TextEdit::singleline(&mut self.map_tag)
+                                .desired_width(160.0)
+                                .ui(ui)
+                                .changed()
+                            {
+                                if self.map_tag.trim().is_empty() {
+                                    self.update_from = false;
+                                }
+                                self.need_to_save = true;
+                            }
+                            if ui.button("↻").clicked() {
+                                self.map_tag.clear();
+                                self.need_to_save = true;
+                            }
+                        });
+                        let response = ui.label("Personal map tag");
+                        if response.clicked() || response.hovered() {
+                            //TODO: put popup to help location
+                        }
+                    });
+                    if egui::Checkbox::new(&mut self.update_from, "Direct update From field")
+                        .ui(ui)
+                        .changed()
+                    {
+                        self.update_from = true;
+                    }
                 });
             });
     }
@@ -630,6 +679,9 @@ impl Default for MarshrutkaApp {
             pause_between_steps: Default::default(),
             path: Default::default(),
             map_url: DEFAULT_MAP_URL.to_string(),
+            maps_url: DEFAULT_MAPS_URL.to_string(),
+            map_tag: Default::default(),
+            update_from: Default::default(),
             route_guru_skill: Default::default(),
         }
     }
