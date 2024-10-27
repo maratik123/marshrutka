@@ -208,12 +208,11 @@ macro_rules! adjacent_pos {
     }
 }
 
-from_u_to_pos!(u8 u16 u32 u64 u128 usize);
+from_u_to_pos!(u8 u16 u32 u64 usize);
 adjacent_pos!(
     (adjacent_pos_u8, u8),
     (adjacent_pos_u16, u16),
     (adjacent_pos_u32, u32),
     (adjacent_pos_u64, u64),
-    (adjacent_pos_u128, u128),
     (adjacent_pos_usize, usize)
 );

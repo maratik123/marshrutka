@@ -169,12 +169,19 @@ impl MarshrutkaApp {
                         egui::warn_if_debug_build(ui);
                         ui.add_space(4.0);
                     }
-                    ui.hyperlink_to("Support chat", "https://t.me/marshrutka_support");
+                    egui::Hyperlink::from_label_and_url(
+                        "Support chat",
+                        "https://t.me/marshrutka_support",
+                    )
+                    .open_in_new_tab(true)
+                    .ui(ui);
                     ui.add_space(4.0);
-                    ui.hyperlink_to(
+                    egui::Hyperlink::from_label_and_url(
                         "Support and source code",
                         "https://github.com/maratik123/marshrutka",
-                    );
+                    )
+                    .open_in_new_tab(true)
+                    .ui(ui);
                 });
             });
     }
@@ -220,7 +227,7 @@ impl MarshrutkaApp {
                     ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.pause_between_steps)
                             .clamp_existing_to_range(true)
-                            .range(0..=(Second::per(Hour) as u32))
+                            .range(0..=Second::per(Hour))
                             .ui(ui)
                             .changed()
                         {
@@ -244,7 +251,7 @@ impl MarshrutkaApp {
                             }
                         });
                         ui.label("Map URL");
-                    })
+                    });
                 });
             });
     }
@@ -393,7 +400,7 @@ impl MarshrutkaApp {
                                         };
                                         egui::Hyperlink::from_label_and_url(
                                             &command_str,
-                                            format!("https://t.me/share/url?url={command_str}"),
+                                            format!("https://t.me/ChatWarsBot?text={command_str}"),
                                         )
                                         .open_in_new_tab(true)
                                         .ui(ui);
@@ -527,7 +534,7 @@ impl MarshrutkaApp {
             }
             Err(err) => {
                 egui::CentralPanel::default().show(ctx, |ui| {
-                    ui.centered_and_justified(|ui| {
+                    ui.vertical_centered_justified(|ui| {
                         ui.heading("Invalid map");
                         ui.label(err.to_string());
                     });

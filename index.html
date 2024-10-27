@@ -83,21 +83,26 @@
 
         /* ---------------------------------------------- */
         /* Loading animation from https://loading.io/css/ */
+        .lds-dual-ring,
+        .lds-dual-ring:after {
+            box-sizing: border-box;
+        }
+
         .lds-dual-ring {
             display: inline-block;
-            width: 24px;
-            height: 24px;
+            width: 80px;
+            height: 80px;
         }
 
         .lds-dual-ring:after {
             content: " ";
             display: block;
-            width: 24px;
-            height: 24px;
-            margin: 0;
-            border-radius: 50%;
-            border: 3px;
+            width: 64px;
+            height: 64px;
+            margin: 8px;
+            border: 6px solid;
             border-color: #fff transparent #fff transparent;
+            border-radius: 50%;
             animation: lds-dual-ring 1.2s linear infinite;
         }
 
@@ -105,7 +110,6 @@
             0% {
                 transform: rotate(0deg);
             }
-
             100% {
                 transform: rotate(360deg);
             }

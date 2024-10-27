@@ -35,7 +35,7 @@ macro_rules! try_from_route_guru_to_ratio {
     };
 }
 
-try_from_route_guru_to_ratio!(u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize);
+try_from_route_guru_to_ratio!(u8 u16 u32 u64 usize i8 i16 i32 i64 isize);
 
 impl From<u32> for RouteGuru {
     fn from(value: u32) -> Self {
