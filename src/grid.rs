@@ -17,6 +17,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::iter;
+use std::ops::Index;
 use strum::{EnumCount, IntoEnumIterator};
 use tl::HTMLTag;
 
@@ -206,13 +207,10 @@ impl MapGrid {
                                 _ => unreachable!(),
                             };
                             let i = xy_to_i(max_coord_i, square_size, proj_x, proj_y);
-                            nearest_campfire(
-                                grid_ref[i].index,
-                                homeland,
-                                campfires,
-                                grid_ref,
-                                index_ref,
-                            )
+                            let index = grid_ref[i].index;
+                            cached_nearest_campfires.get(&index).copied().or_else(|| {
+                                nearest_campfire(index, homeland, campfires, grid_ref, index_ref)
+                            })
                         })
                         .map(|nearest_campfire| (i, homeland, nearest_campfire))
                 })
@@ -283,6 +281,14 @@ impl MapGrid {
     }
 }
 
+impl Index<&CellIndex> for MapGrid {
+    type Output = Cell;
+
+    fn index(&self, cell_index: &CellIndex) -> &Self::Output {
+        &self.grid[self.index[cell_index]]
+    }
+}
+
 const fn xy_to_i(homeland_size: isize, square_size: usize, x: isize, y: isize) -> usize {
     (x + homeland_size) as usize + (y + homeland_size) as usize * square_size
 }
@@ -290,7 +296,7 @@ const fn xy_to_i(homeland_size: isize, square_size: usize, x: isize, y: isize) -
 fn nearest_campfire(
     from: CellIndex,
     homeland: Homeland,
-    positions: &HashSet<Pos>,
+    campfires: &HashSet<Pos>,
     grid: &[Cell],
     index: &HashMap<CellIndex, usize>,
 ) -> Option<CellIndex> {
@@ -299,12 +305,12 @@ fn nearest_campfire(
         pos: from_pos,
     } = &from
     {
-        if &homeland == from_homeland && positions.contains(from_pos) {
+        if &homeland == from_homeland && campfires.contains(from_pos) {
             return Some(from);
         }
     }
     let from_cell = &grid[index[&from]];
-    positions
+    campfires
         .iter()
         .map(|&pos| CellIndex::Homeland { homeland, pos })
         .map(|campfire_index| index[&campfire_index])
@@ -312,7 +318,7 @@ fn nearest_campfire(
         .min_by_key(|&campfire_cell| {
             let x = (campfire_cell.x as isize).unsigned_abs();
             let y = (campfire_cell.y as isize).unsigned_abs();
-            (from_cell.distance(campfire_cell), x + y, x, y)
+            (from_cell.distance(campfire_cell), x != y, x + y, x, y)
         })
         .map(|campfire_cell| campfire_cell.index)
 }

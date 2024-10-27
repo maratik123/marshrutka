@@ -126,7 +126,7 @@ fn inflight_edges(
         if vertex == CellIndex::Center || campfires.contains(&vertex) {
             for caravan_dest in iter::once(CellIndex::Center)
                 .chain(campfires.iter().copied())
-                .filter(|campfire| campfire != &vertex)
+                .filter(|&campfire| campfire != vertex)
             {
                 ret.push((
                     caravan_dest,
@@ -143,7 +143,7 @@ fn inflight_edges(
     }
     // 0..1
     if use_soe {
-        if let Some(nearest_campfire) = grid.grid[grid.index[&vertex]]
+        if let Some(nearest_campfire) = grid[&vertex]
             .nearest_campfire
             .get()
             .and_then(|nearest_campfire| nearest_campfire[homeland])
@@ -231,7 +231,7 @@ fn caravan_cost(
     to: CellIndex,
     route_guru: RouteGuru,
 ) -> CaravanCost {
-    let distance = grid.grid[grid.index[&from]].distance(&grid.grid[grid.index[&to]]) as u32;
+    let distance = grid[&from].distance(&grid[&to]) as u32;
 
     let money = match to {
         CellIndex::Center => CARAVAN_TO_CENTER_MONEY,

@@ -1,5 +1,4 @@
 pub const DEFAULT_MAP_URL: &str = "https://maratik.fyi/api/chatwars/webview/map";
-pub const DEFAULT_MAPS_URL: &str = "https://maratik.fyi/api/chatwars/webview/maps/";
 
 pub const FONT_CENTER: &str = "center";
 pub const FONT_CENTER_SIZE: f32 = 32.0;
