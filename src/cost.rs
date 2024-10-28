@@ -33,7 +33,7 @@ impl EdgeCost {
         match self {
             EdgeCost::NoMove
             | EdgeCost::CentralMove
-            | EdgeCost::Caravan { .. }
+            | EdgeCost::Caravan(_)
             | EdgeCost::ScrollOfEscape => 0,
             EdgeCost::StandardMove => 1,
         }

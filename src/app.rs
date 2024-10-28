@@ -3,6 +3,7 @@ use crate::consts::{
     FONT_CORNER_SIZE,
 };
 use crate::cost::{AggregatedCost, Command, CostComparator, TotalCost};
+use crate::deep_link::{send_command_to_bot, LINK_TO_SUPPORT_CHAT};
 use crate::emoji::EmojiMap;
 use crate::grid::{arrow, MapGrid, MapGridResponse};
 use crate::homeland::Homeland;
@@ -169,12 +170,9 @@ impl MarshrutkaApp {
                         egui::warn_if_debug_build(ui);
                         ui.add_space(4.0);
                     }
-                    egui::Hyperlink::from_label_and_url(
-                        "Support chat",
-                        "https://t.me/marshrutka_support",
-                    )
-                    .open_in_new_tab(true)
-                    .ui(ui);
+                    egui::Hyperlink::from_label_and_url("Support chat", LINK_TO_SUPPORT_CHAT)
+                        .open_in_new_tab(true)
+                        .ui(ui);
                     ui.add_space(4.0);
                     egui::Hyperlink::from_label_and_url(
                         "Support and source code",
@@ -400,7 +398,7 @@ impl MarshrutkaApp {
                                         };
                                         egui::Hyperlink::from_label_and_url(
                                             &command_str,
-                                            format!("https://t.me/ChatWarsBot?text={command_str}"),
+                                            send_command_to_bot(&command_str),
                                         )
                                         .open_in_new_tab(true)
                                         .ui(ui);

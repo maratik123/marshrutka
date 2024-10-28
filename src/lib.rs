@@ -3,6 +3,7 @@ mod binary_heap;
 mod cell;
 mod consts;
 mod cost;
+mod deep_link;
 mod emoji;
 mod grid;
 mod homeland;
