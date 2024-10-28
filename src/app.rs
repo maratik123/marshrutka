@@ -632,8 +632,8 @@ impl Default for MarshrutkaApp {
     fn default() -> Self {
         Self {
             emojis: Default::default(),
-            show_settings: Default::default(),
-            show_about: Default::default(),
+            show_settings: true,
+            show_about: true,
             grid: Default::default(),
             from: Default::default(),
             to: Default::default(),
