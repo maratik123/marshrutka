@@ -3,7 +3,7 @@ use crate::consts::{
     FONT_CORNER_SIZE,
 };
 use crate::cost::{AggregatedCost, Command, CostComparator, TotalCost};
-use crate::deep_link::{send_command_to_bot, LINK_TO_SUPPORT_CHAT};
+use crate::deep_link::{send_command, send_command_to_bot, LINK_TO_SUPPORT_CHAT};
 use crate::emoji::EmojiMap;
 use crate::grid::{arrow, MapGrid, MapGridResponse};
 use crate::homeland::Homeland;
@@ -55,6 +55,7 @@ pub struct MarshrutkaApp {
     #[serde(skip)]
     path: Option<Rc<TotalCost>>,
     map_url: String,
+    command_via_share_link: bool,
     route_guru_skill: u32,
 }
 
@@ -250,6 +251,13 @@ impl MarshrutkaApp {
                         });
                         ui.label("Map URL");
                     });
+                    if ui
+                        .checkbox(&mut self.command_via_share_link, "Use share link")
+                        .on_hover_text("Check if commands is not sent to bot")
+                        .changed()
+                    {
+                        self.need_to_save = true;
+                    }
                 });
             });
     }
@@ -398,7 +406,11 @@ impl MarshrutkaApp {
                                         };
                                         egui::Hyperlink::from_label_and_url(
                                             &command_str,
-                                            send_command_to_bot(&command_str),
+                                            if self.command_via_share_link {
+                                                send_command(&command_str)
+                                            } else {
+                                                send_command_to_bot(&command_str)
+                                            },
                                         )
                                         .open_in_new_tab(true)
                                         .ui(ui);
@@ -635,6 +647,7 @@ impl Default for MarshrutkaApp {
             pause_between_steps: Default::default(),
             path: Default::default(),
             map_url: DEFAULT_MAP_URL.to_string(),
+            command_via_share_link: Default::default(),
             route_guru_skill: Default::default(),
         }
     }
