@@ -17,7 +17,7 @@ mod wasm {
     pub const LINK_TO_SUPPORT_CHAT: &str = "tg://resolve?domain=marshrutka_support";
 
     pub fn send_command_to_bot(command: impl Display) -> String {
-        format!("tg://resolve?domain=ChatWarsBot&text={command}")
+        format!("tg://resolve?domain=ChatWarsBot&text={command}&profile")
     }
 }
 
