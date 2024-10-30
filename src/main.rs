@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use marshrutka::app::MarshrutkaApp;
+use url::Url;
 
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
@@ -22,7 +23,12 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Marshrutka",
         native_options,
-        Box::new(|cc| Ok(Box::new(MarshrutkaApp::new(cc)))),
+        Box::new(|cc| {
+            Ok(Box::new(MarshrutkaApp::new(
+                cc,
+                Url::from_directory_path(env!("CARGO_MANIFEST_DIR")).unwrap(),
+            )))
+        }),
     )
 }
 
@@ -51,7 +57,15 @@ fn main() {
             .start(
                 canvas,
                 web_options,
-                Box::new(|cc| Ok(Box::new(MarshrutkaApp::new(cc)))),
+                Box::new(|cc| {
+                    Ok(Box::new(MarshrutkaApp::new(
+                        cc,
+                        document
+                            .base_uri()
+                            .expect("Unexpected base URI")
+                            .expect("Base URI not set"),
+                    )))
+                }),
             )
             .await;
 

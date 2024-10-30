@@ -12,7 +12,7 @@ use crate::pathfinder::{find_path, FindPathSettings};
 use eframe::emath::Align;
 use eframe::CreationContext;
 use egui::emath::Rot2;
-use egui::load::BytesPoll;
+use egui::load::{Bytes, BytesPoll};
 use egui::scroll_area::ScrollBarVisibility;
 use egui::{
     Color32, FontId, Image, ImageButton, InnerResponse, Layout, ScrollArea, TextStyle, Ui, Visuals,
@@ -28,6 +28,7 @@ use strum::IntoEnumIterator;
 use time::convert::{Hour, Second};
 use time::macros::format_description;
 use time::{Duration, Time};
+use url::Url;
 
 const HELP1: &str = "To point \"From\" - LMB or short tap,";
 const HELP2: &str = "to point \"To\" - RMB or long tap";
@@ -57,20 +58,24 @@ pub struct MarshrutkaApp {
     map_url: String,
     command_via_share_link: bool,
     route_guru_skill: u32,
+    #[serde(skip)]
+    base_uri: OnceCell<Url>,
+    #[serde(skip)]
+    fonts_loaded: bool,
 }
 
 impl MarshrutkaApp {
-    pub fn new(cc: &CreationContext<'_>) -> Self {
+    pub fn new(cc: &CreationContext<'_>, base_uri: Url) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
 
         // Load previous app state (if any).
         // Note that you must enable the `persistence` feature for this to work.
-        let result: MarshrutkaApp = if let Some(storage) = cc.storage {
+        let result: MarshrutkaApp = MarshrutkaApp {base_uri: OnceCell::from(base_uri), .. if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
         } else {
             Default::default()
-        };
+        }};
         egui_extras::install_image_loaders(&cc.egui_ctx);
         cc.egui_ctx.set_visuals(Visuals::light());
         cc.egui_ctx.all_styles_mut(|styles| {
@@ -508,6 +513,27 @@ impl MarshrutkaApp {
         });
     }
 
+    fn get_uri(&self, path: &str) -> Url {
+        self.base_uri.get().unwrap().join(path).unwrap()
+    }
+
+    fn load_font(&self, ctx: &egui::Context, font_path: &str) -> Option<Bytes> {
+        let bytes = ctx.try_load_bytes(self.get_uri(font_path).as_str());
+
+        match bytes {
+            Ok(BytesPoll::Pending { .. }) => {
+                ctx.request_repaint();
+                None
+            }
+            Ok(BytesPoll::Ready { bytes, .. }) => Some(bytes),
+            Err(e) => panic!("Error loading font: {e:?}"),
+        }
+    }
+
+    fn load_fonts(&self, ctx: &egui::Context) -> Option<()> {
+        let noto_emoji = self.load_font(ctx, "fonts/NotoEmoji-Regular.ttf")?;
+    }
+
     fn load_map(&mut self, ctx: &egui::Context) -> bool {
         if self.grid.is_some() {
             return true;
@@ -603,6 +629,10 @@ impl eframe::App for MarshrutkaApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // Prepare data
+        if self.load_fonts(ctx).is_none() {
+            return;
+        }
+
         if !self.load_map(ctx) {
             return;
         }
@@ -649,6 +679,8 @@ impl Default for MarshrutkaApp {
             map_url: DEFAULT_MAP_URL.to_string(),
             command_via_share_link: Default::default(),
             route_guru_skill: Default::default(),
+            base_uri: Default::default(),
+            fonts_loaded: Default::default(),
         }
     }
 }
