@@ -5,6 +5,7 @@ mod consts;
 mod cost;
 mod deep_link;
 mod emoji;
+mod fonts;
 mod grid;
 mod homeland;
 mod index;
