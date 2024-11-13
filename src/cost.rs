@@ -98,7 +98,7 @@ impl AggregatedCost {
             | AggregatedCost::Caravan(CaravanCost { time, .. }) => *time,
             AggregatedCost::StandardMove {
                 time, fleetfoot, ..
-            } => fleetfoot.time(*time).unwrap(),
+            } => fleetfoot.time(*time).unwrap_or(*time),
         }
     }
 
