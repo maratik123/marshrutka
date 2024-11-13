@@ -1,3 +1,5 @@
+use time::Duration;
+
 pub const DEFAULT_MAP_URL: &str = "https://maratik.fyi/api/chatwars/webview/map";
 
 pub const FONT_CENTER: &str = "center";
@@ -17,3 +19,8 @@ pub const BLEACH_ALPHA: u8 = 166;
 
 pub const ARROW_WIDTH: f32 = 3.0;
 pub const ARROW_TIP_CIRCLE: f32 = 5.0;
+
+pub const CARAVAN_TIME: Duration = Duration::minutes(4);
+pub const CARAVAN_TO_HOME_MONEY: u32 = 2;
+pub const CARAVAN_TO_CENTER_MONEY: u32 = 2;
+pub const CARAVAN_MONEY: u32 = 5;

@@ -55,8 +55,9 @@ pub struct MarshrutkaApp {
     #[serde(skip)]
     path: Option<Rc<TotalCost>>,
     map_url: String,
-    command_via_share_link: bool,
+    command_via_chat_link: bool,
     route_guru_skill: u32,
+    fleetfoot_skill: u32,
 }
 
 impl MarshrutkaApp {
@@ -215,6 +216,17 @@ impl MarshrutkaApp {
                         ui.label("Route Guru skill level");
                     });
                     ui.horizontal(|ui| {
+                        if egui::DragValue::new(&mut self.fleetfoot_skill)
+                            .clamp_existing_to_range(true)
+                            .range(0..=1)
+                            .ui(ui)
+                            .changed()
+                        {
+                            self.need_to_save = true;
+                        }
+                        ui.label("Fleetfoot skill level");
+                    });
+                    ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.scroll_of_escape_cost)
                             .ui(ui)
                             .changed()
@@ -252,8 +264,8 @@ impl MarshrutkaApp {
                         ui.label("Map URL");
                     });
                     if ui
-                        .checkbox(&mut self.command_via_share_link, "Use share link")
-                        .on_hover_text("Check if commands is not sent to bot")
+                        .checkbox(&mut self.command_via_chat_link, "Use direct chat link")
+                        .on_hover_text("Use with caution, at least on android")
                         .changed()
                     {
                         self.need_to_save = true;
@@ -406,10 +418,10 @@ impl MarshrutkaApp {
                                         };
                                         egui::Hyperlink::from_label_and_url(
                                             &command_str,
-                                            if self.command_via_share_link {
-                                                send_command(&command_str)
-                                            } else {
+                                            if self.command_via_chat_link {
                                                 send_command_to_bot(&command_str)
+                                            } else {
+                                                send_command(&command_str)
                                             },
                                         )
                                         .open_in_new_tab(true)
@@ -567,6 +579,7 @@ impl MarshrutkaApp {
                         use_soe: self.use_soe,
                         use_caravans: self.use_caravans,
                         route_guru: self.route_guru_skill.into(),
+                        fleetfoot: self.fleetfoot_skill.into(),
                         sort_by: self.sort_by,
                         grid: self.grid.as_ref().unwrap(),
                     },
@@ -647,8 +660,9 @@ impl Default for MarshrutkaApp {
             pause_between_steps: Default::default(),
             path: Default::default(),
             map_url: DEFAULT_MAP_URL.to_string(),
-            command_via_share_link: Default::default(),
+            command_via_chat_link: Default::default(),
             route_guru_skill: Default::default(),
+            fleetfoot_skill: Default::default(),
         }
     }
 }

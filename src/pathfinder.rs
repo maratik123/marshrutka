@@ -1,14 +1,14 @@
 use crate::binary_heap::BinaryHeap;
+use crate::consts::{CARAVAN_MONEY, CARAVAN_TIME, CARAVAN_TO_CENTER_MONEY, CARAVAN_TO_HOME_MONEY};
 use crate::cost::{CaravanCost, CostComparator, EdgeCost, TotalCost};
 use crate::grid::{MapGrid, PoI};
 use crate::homeland::Homeland;
 use crate::index::{Border, BorderDirection, CellIndex, Pos};
-use crate::skill::RouteGuru;
+use crate::skill::{Fleetfoot, RouteGuru, Skill};
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::iter;
 use strum::IntoEnumIterator;
-use time::Duration;
 
 fn inflight_edges(
     grid: &MapGrid,
@@ -159,6 +159,7 @@ pub struct FindPathSettings<'a> {
     pub use_soe: bool,
     pub use_caravans: bool,
     pub route_guru: RouteGuru,
+    pub fleetfoot: Fleetfoot,
     pub sort_by: (CostComparator, CostComparator),
     pub homeland: Homeland,
     pub grid: &'a MapGrid,
@@ -172,6 +173,7 @@ pub fn find_path(
         use_soe,
         use_caravans,
         route_guru,
+        fleetfoot,
         sort_by: (c1, c2),
         homeland,
     }: FindPathSettings,
@@ -204,6 +206,7 @@ pub fn find_path(
                 + (
                     edge_cost,
                     scroll_of_escape_cost,
+                    fleetfoot,
                     lowest_cost_index,
                     edge_index,
                 );
@@ -218,11 +221,6 @@ pub fn find_path(
     }
     None
 }
-
-const CARAVAN_TIME: Duration = Duration::minutes(4);
-const CARAVAN_TO_HOME_MONEY: u32 = 2;
-const CARAVAN_TO_CENTER_MONEY: u32 = 2;
-const CARAVAN_MONEY: u32 = 5;
 
 fn caravan_cost(
     grid: &MapGrid,

@@ -1,4 +1,5 @@
 use crate::index::CellIndex;
+use crate::skill::{Fleetfoot, Skill};
 use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 use std::cmp::Ordering;
@@ -26,6 +27,7 @@ struct ToFountainMove {
     time: Duration,
     from: CellIndex,
     to: CellIndex,
+    fleetfoot: Fleetfoot,
 }
 
 impl EdgeCost {
@@ -64,20 +66,28 @@ pub enum CostComparator {
     Money,
 }
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Debug)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug, Ord, PartialOrd)]
 pub struct Command {
     pub aggregated_cost: AggregatedCost,
     pub from: CellIndex,
     pub to: CellIndex,
 }
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Debug)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug, Ord, PartialOrd)]
 pub enum AggregatedCost {
     NoMove,
-    CentralMove { time: Duration },
-    StandardMove { time: Duration, legs: u32 },
+    CentralMove {
+        time: Duration,
+    },
+    StandardMove {
+        time: Duration,
+        legs: u32,
+        fleetfoot: Fleetfoot,
+    },
     Caravan(CaravanCost),
-    ScrollOfEscape { money: u32 },
+    ScrollOfEscape {
+        money: u32,
+    },
 }
 
 impl AggregatedCost {
@@ -85,8 +95,10 @@ impl AggregatedCost {
         match self {
             AggregatedCost::ScrollOfEscape { .. } | AggregatedCost::NoMove => Duration::ZERO,
             AggregatedCost::CentralMove { time }
-            | AggregatedCost::StandardMove { time, .. }
             | AggregatedCost::Caravan(CaravanCost { time, .. }) => *time,
+            AggregatedCost::StandardMove {
+                time, fleetfoot, ..
+            } => fleetfoot.time(*time).unwrap(),
         }
     }
 
@@ -111,8 +123,8 @@ impl AggregatedCost {
     }
 }
 
-impl From<(EdgeCost, u32)> for AggregatedCost {
-    fn from((edge_cost, scroll_of_escape_cost): (EdgeCost, u32)) -> Self {
+impl From<(EdgeCost, u32, Fleetfoot)> for AggregatedCost {
+    fn from((edge_cost, scroll_of_escape_cost, fleetfoot): (EdgeCost, u32, Fleetfoot)) -> Self {
         match edge_cost {
             EdgeCost::NoMove => AggregatedCost::NoMove,
             EdgeCost::CentralMove => AggregatedCost::CentralMove {
@@ -121,6 +133,7 @@ impl From<(EdgeCost, u32)> for AggregatedCost {
             EdgeCost::StandardMove => AggregatedCost::StandardMove {
                 legs: edge_cost.legs(),
                 time: edge_cost.time(),
+                fleetfoot,
             },
             EdgeCost::Caravan(caravan_cost) => AggregatedCost::Caravan(caravan_cost),
             EdgeCost::ScrollOfEscape => AggregatedCost::ScrollOfEscape {
@@ -151,23 +164,20 @@ impl TotalCost {
     }
 }
 
-impl TotalCost {
-    pub fn time_as_ms(&self) -> String {
-        self.time.to_string()
-    }
-}
-
-impl AddAssign<(EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
+impl AddAssign<(EdgeCost, u32, Fleetfoot, CellIndex, CellIndex)> for TotalCost {
     fn add_assign(
         &mut self,
-        (edge_cost, scroll_of_escape_cost, from, to): (EdgeCost, u32, CellIndex, CellIndex),
+        (edge_cost, scroll_of_escape_cost, fleetfoot, from, to): (
+            EdgeCost,
+            u32,
+            Fleetfoot,
+            CellIndex,
+            CellIndex,
+        ),
     ) {
         let legs = edge_cost.legs();
         let money = edge_cost.money(scroll_of_escape_cost);
         let time = edge_cost.time();
-        self.legs += legs;
-        self.money += money;
-        self.time += time;
         let (aggregated_cost, from) = match (self.commands.last(), edge_cost) {
             (
                 Some(Command {
@@ -176,7 +186,7 @@ impl AddAssign<(EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
                 }),
                 _,
             ) => (
-                (edge_cost, scroll_of_escape_cost).into(),
+                (edge_cost, scroll_of_escape_cost, fleetfoot).into(),
                 self.commands.pop().unwrap().from,
             ),
             (
@@ -185,6 +195,7 @@ impl AddAssign<(EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
                         AggregatedCost::StandardMove {
                             legs: agg_legs,
                             time: agg_time,
+                            fleetfoot,
                         },
                     ..
                 }),
@@ -193,6 +204,7 @@ impl AddAssign<(EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
                 let aggregated_cost = AggregatedCost::StandardMove {
                     legs: *agg_legs + legs,
                     time: *agg_time + time,
+                    fleetfoot: *fleetfoot,
                 };
                 (aggregated_cost, self.commands.pop().unwrap().from)
             }
@@ -200,7 +212,11 @@ impl AddAssign<(EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
                 match edge_cost {
                     EdgeCost::NoMove => AggregatedCost::NoMove,
                     EdgeCost::CentralMove => AggregatedCost::CentralMove { time },
-                    EdgeCost::StandardMove => AggregatedCost::StandardMove { time, legs },
+                    EdgeCost::StandardMove => AggregatedCost::StandardMove {
+                        time,
+                        legs,
+                        fleetfoot,
+                    },
                     EdgeCost::Caravan(_) => AggregatedCost::Caravan(CaravanCost { time, money }),
                     EdgeCost::ScrollOfEscape => AggregatedCost::ScrollOfEscape { money },
                 },
@@ -211,13 +227,28 @@ impl AddAssign<(EdgeCost, u32, CellIndex, CellIndex)> for TotalCost {
             aggregated_cost,
             from,
             to,
-        })
+        });
+        (self.legs, self.money, self.time) = self
+            .commands
+            .iter()
+            .map(|command| {
+                let aggregated_cost = &command.aggregated_cost;
+                (
+                    aggregated_cost.legs(),
+                    aggregated_cost.money(),
+                    aggregated_cost.time(),
+                )
+            })
+            .reduce(|(a_legs, a_money, a_time), (b_legs, b_money, b_time)| {
+                (a_legs + b_legs, a_money + b_money, a_time + b_time)
+            })
+            .unwrap_or_default();
     }
 }
 
 impl AddAssign<&ToFountainMove> for TotalCost {
-    fn add_assign(&mut self, rhs: &ToFountainMove) {
-        self.time += rhs.time;
+    fn add_assign(&mut self, fountain_move: &ToFountainMove) {
+        self.time += fountain_move.time;
         let (from, time) = match self.commands.last() {
             Some(Command {
                 aggregated_cost: AggregatedCost::NoMove,
@@ -230,27 +261,28 @@ impl AddAssign<&ToFountainMove> for TotalCost {
                 let time = *time;
                 (self.commands.pop().unwrap().from, time)
             }
-            _ => (rhs.from, Duration::ZERO),
+            _ => (fountain_move.from, Duration::ZERO),
         };
         self.commands.push(Command {
-            aggregated_cost: if from == rhs.to {
+            aggregated_cost: if from == fountain_move.to {
                 AggregatedCost::NoMove
             } else {
                 AggregatedCost::StandardMove {
-                    time: time + rhs.time,
+                    time: time + fountain_move.time,
                     legs: 0,
+                    fleetfoot: fountain_move.fleetfoot,
                 }
             },
             from,
-            to: rhs.to,
+            to: fountain_move.to,
         })
     }
 }
 
-impl Add<(EdgeCost, u32, CellIndex, CellIndex)> for &TotalCost {
+impl Add<(EdgeCost, u32, Fleetfoot, CellIndex, CellIndex)> for &TotalCost {
     type Output = TotalCost;
 
-    fn add(self, rhs: (EdgeCost, u32, CellIndex, CellIndex)) -> Self::Output {
+    fn add(self, rhs: (EdgeCost, u32, Fleetfoot, CellIndex, CellIndex)) -> Self::Output {
         let mut ret = self.clone();
         ret += rhs;
         ret
