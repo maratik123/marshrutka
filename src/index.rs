@@ -46,38 +46,6 @@ pub enum CellIndex {
 }
 
 #[derive(
-    Copy,
-    Clone,
-    Eq,
-    PartialEq,
-    Hash,
-    Serialize,
-    Deserialize,
-    Debug,
-    Ord,
-    PartialOrd,
-    IntoStaticStr,
-    EnumIter,
-)]
-pub enum CellIndexType {
-    Center,
-    Homeland,
-    Border,
-}
-
-impl CellIndexType {
-    pub fn name(&self) -> &'static str {
-        self.into()
-    }
-}
-
-impl Display for CellIndexType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.name().fmt(f)
-    }
-}
-
-#[derive(
     Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug, Ord, PartialOrd, EnumIter,
 )]
 pub enum CellIndexLiteral {
@@ -141,69 +109,6 @@ impl From<CellIndexLiteral> for &'static str {
 }
 
 impl CellIndex {
-    pub fn mutate_by_type(self, homeland: Homeland, to: CellIndexType) -> Self {
-        match (self, to) {
-            (_, CellIndexType::Center) => CellIndexBuilder::Center,
-            (CellIndex::Homeland { .. }, CellIndexType::Homeland)
-            | (CellIndex::Border { .. }, CellIndexType::Border) => self.into(),
-            (CellIndex::Center, CellIndexType::Homeland) => CellIndexBuilder::Homeland {
-                homeland,
-                pos: Pos { x: 1, y: 1 },
-            },
-            (CellIndex::Center, CellIndexType::Border) => CellIndexBuilder::Border {
-                border: homeland.border(BorderDirection::Horizontal),
-                shift: 1,
-            },
-            (
-                CellIndex::Homeland {
-                    homeland: self_homeland,
-                    pos,
-                },
-                CellIndexType::Border,
-            ) if homeland == self_homeland || homeland.farland() == self_homeland => {
-                CellIndexBuilder::Border {
-                    border: homeland.border(BorderDirection::Horizontal),
-                    shift: pos.x,
-                }
-            }
-            (
-                CellIndex::Homeland {
-                    homeland: self_homeland,
-                    pos,
-                },
-                CellIndexType::Border,
-            ) => {
-                let (border, neighbour) = homeland.neighbour_border(BorderDirection::Horizontal);
-                if neighbour == self_homeland {
-                    CellIndexBuilder::Border {
-                        border,
-                        shift: pos.x,
-                    }
-                } else {
-                    CellIndexBuilder::Border {
-                        border: homeland.border(BorderDirection::Vertical),
-                        shift: pos.y,
-                    }
-                }
-            }
-            (CellIndex::Border { border, shift }, CellIndexType::Homeland) => {
-                let neighbours = border.neighbours();
-                CellIndexBuilder::Homeland {
-                    homeland: if neighbours.contains(&homeland) {
-                        homeland
-                    } else {
-                        neighbours[0]
-                    },
-                    pos: match border.direction() {
-                        BorderDirection::Horizontal => Pos { x: shift, y: 1 },
-                        BorderDirection::Vertical => Pos { x: 1, y: shift },
-                    },
-                }
-            }
-        }
-        .build()
-    }
-
     pub fn mutate_by_literal(self, to: CellIndexLiteral) -> CellIndex {
         match (self, to) {
             (_, CellIndexLiteral::Center) => CellIndexBuilder::Center,
@@ -321,16 +226,6 @@ impl CellIndex {
             },
         }
         .build()
-    }
-}
-
-impl From<CellIndex> for CellIndexType {
-    fn from(cell_index: CellIndex) -> Self {
-        match cell_index {
-            CellIndex::Center => CellIndexType::Center,
-            CellIndex::Homeland { .. } => CellIndexType::Homeland,
-            CellIndex::Border { .. } => CellIndexType::Border,
-        }
     }
 }
 
