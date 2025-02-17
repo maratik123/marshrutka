@@ -237,6 +237,18 @@ impl AddAssign<(EdgeCost, u32, u32, Fleetfoot, CellIndex, CellIndex)> for TotalC
                 };
                 (aggregated_cost, self.commands.pop().unwrap().from)
             }
+            (
+                Some(Command {
+                    aggregated_cost: AggregatedCost::CentralMove { time: agg_time },
+                    ..
+                }),
+                EdgeCost::CentralMove,
+            ) => {
+                let aggregated_cost = AggregatedCost::CentralMove {
+                    time: *agg_time + time,
+                };
+                (aggregated_cost, self.commands.pop().unwrap().from)
+            }
             _ => (
                 match edge_cost {
                     EdgeCost::NoMove => AggregatedCost::NoMove,
