@@ -237,6 +237,23 @@ pub enum CellIndexBuilder {
 }
 
 impl CellIndexBuilder {
+    pub fn clamp(self, homeland_size: u8) -> Self {
+        match self {
+            CellIndexBuilder::Center => CellIndexBuilder::Center,
+            CellIndexBuilder::Homeland { homeland, pos } => CellIndexBuilder::Homeland {
+                homeland,
+                pos: Pos {
+                    x: pos.x.min(homeland_size),
+                    y: pos.y.min(homeland_size),
+                },
+            },
+            CellIndexBuilder::Border { border, shift } => CellIndexBuilder::Border {
+                border,
+                shift: shift.min(homeland_size),
+            },
+        }
+    }
+
     pub const fn build(self) -> CellIndex {
         match self {
             CellIndexBuilder::Center
