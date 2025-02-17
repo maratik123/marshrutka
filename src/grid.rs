@@ -2,7 +2,7 @@ use crate::cell::{cell_parts, Cell, CellElement};
 use crate::consts::{ARROW_TIP_CIRCLE, ARROW_WIDTH, CELL_SIZE, GRID_SPACING};
 use crate::emoji::EmojiMap;
 use crate::homeland::Homeland;
-use crate::index::{BorderDirection, CellIndex, Pos};
+use crate::index::{BorderDirection, CellIndex, CellIndexBuilder, Pos};
 use anyhow::{anyhow, Result};
 use eframe::emath::Rot2;
 use egui::ahash::HashSet;
@@ -162,7 +162,7 @@ impl MapGrid {
                     .into_iter()
                     .flat_map(|border| {
                         (1..=(max_coord as u8))
-                            .map(move |shift| CellIndex::Border { border, shift })
+                            .map(move |shift| CellIndexBuilder::Border { border, shift }.build())
                     })
                     .chain(iter::once(CellIndex::Center))
                     .filter_map(|cell_index| {
@@ -312,7 +312,7 @@ fn nearest_campfire(
     let from_cell = &grid[index[&from]];
     campfires
         .iter()
-        .map(|&pos| CellIndex::Homeland { homeland, pos })
+        .map(|&pos| CellIndexBuilder::Homeland { homeland, pos }.build())
         .map(|campfire_index| index[&campfire_index])
         .map(|i| &grid[i])
         .min_by_key(|&campfire_cell| {

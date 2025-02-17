@@ -3,7 +3,7 @@ use crate::consts::{CARAVAN_MONEY, CARAVAN_TIME, CARAVAN_TO_CENTER_MONEY, CARAVA
 use crate::cost::{CaravanCost, CostComparator, EdgeCost, TotalCost};
 use crate::grid::{MapGrid, PoI};
 use crate::homeland::Homeland;
-use crate::index::{Border, BorderDirection, CellIndex, Pos};
+use crate::index::{Border, BorderDirection, CellIndex, CellIndexBuilder, Pos};
 use crate::skill::{Fleetfoot, RouteGuru, Skill};
 use smallvec::SmallVec;
 use std::collections::HashMap;
@@ -15,9 +15,10 @@ fn inflight_edges(
     homeland: Homeland,
     vertex: CellIndex,
     use_soe: bool,
+    hq_position: Option<CellIndex>,
     use_caravans: bool,
     route_guru: RouteGuru,
-) -> SmallVec<[(CellIndex, EdgeCost); 21]> {
+) -> SmallVec<[(CellIndex, EdgeCost); 22]> {
     let mut ret = SmallVec::new();
     let homeland_size = grid.homeland_size();
     match vertex {
@@ -25,7 +26,7 @@ fn inflight_edges(
             // 4
             ret.extend(Border::iter().map(|border| {
                 (
-                    CellIndex::Border { border, shift: 1 },
+                    CellIndexBuilder::Border { border, shift: 1 }.build(),
                     EdgeCost::CentralMove,
                 )
             }));
@@ -36,30 +37,33 @@ fn inflight_edges(
                 (CellIndex::Center, EdgeCost::CentralMove)
             } else {
                 (
-                    CellIndex::Border {
+                    CellIndexBuilder::Border {
                         border,
                         shift: shift - 1,
-                    },
+                    }
+                    .build(),
                     EdgeCost::StandardMove,
                 )
             });
             // 0..1
             if (shift as usize) < homeland_size {
                 ret.push((
-                    CellIndex::Border {
+                    CellIndexBuilder::Border {
                         border,
                         shift: shift + 1,
-                    },
+                    }
+                    .build(),
                     EdgeCost::StandardMove,
                 ));
             }
             // 2
             ret.extend(border.neighbours().map(|neighbour| {
                 (
-                    CellIndex::Homeland {
+                    CellIndexBuilder::Homeland {
                         homeland: neighbour,
                         pos: border.direction().adjacent_pos_u8(shift),
-                    },
+                    }
+                    .build(),
                     EdgeCost::StandardMove,
                 )
             }));
@@ -71,50 +75,56 @@ fn inflight_edges(
             // 1
             ret.push((
                 if x == 1 {
-                    CellIndex::Border {
+                    CellIndexBuilder::Border {
                         border: vertex_homeland.border(BorderDirection::Vertical),
                         shift: y,
                     }
+                    .build()
                 } else {
-                    CellIndex::Homeland {
+                    CellIndexBuilder::Homeland {
                         homeland: vertex_homeland,
                         pos: Pos { x: x - 1, y },
                     }
+                    .build()
                 },
                 EdgeCost::StandardMove,
             ));
             // 1
             ret.push((
                 if y == 1 {
-                    CellIndex::Border {
+                    CellIndexBuilder::Border {
                         border: vertex_homeland.border(BorderDirection::Horizontal),
                         shift: x,
                     }
+                    .build()
                 } else {
-                    CellIndex::Homeland {
+                    CellIndexBuilder::Homeland {
                         homeland: vertex_homeland,
                         pos: Pos { x, y: y - 1 },
                     }
+                    .build()
                 },
                 EdgeCost::StandardMove,
             ));
             // 0..1
             if (x as usize) < grid.homeland_size() {
                 ret.push((
-                    CellIndex::Homeland {
+                    CellIndexBuilder::Homeland {
                         homeland: vertex_homeland,
                         pos: Pos { x: x + 1, y },
-                    },
+                    }
+                    .build(),
                     EdgeCost::StandardMove,
                 ));
             }
             // 0..1
             if (y as usize) < grid.homeland_size() {
                 ret.push((
-                    CellIndex::Homeland {
+                    CellIndexBuilder::Homeland {
                         homeland: vertex_homeland,
                         pos: Pos { x, y: y + 1 },
-                    },
+                    }
+                    .build(),
                     EdgeCost::StandardMove,
                 ));
             }
@@ -151,13 +161,19 @@ fn inflight_edges(
             ret.push((nearest_campfire, EdgeCost::ScrollOfEscape));
         }
     }
+    // 0..1
+    if let Some(hq_position) = hq_position {
+        ret.push((hq_position, EdgeCost::ScrollOfEscapeHQ));
+    }
     ret
 }
 
 pub struct FindPathSettings<'a> {
     pub scroll_of_escape_cost: u32,
+    pub scroll_of_escape_hq_cost: u32,
     pub use_soe: bool,
     pub use_caravans: bool,
+    pub hq_position: Option<CellIndex>,
     pub route_guru: RouteGuru,
     pub fleetfoot: Fleetfoot,
     pub sort_by: (CostComparator, CostComparator),
@@ -170,7 +186,9 @@ pub fn find_path(
     FindPathSettings {
         grid,
         scroll_of_escape_cost,
+        scroll_of_escape_hq_cost,
         use_soe,
+        hq_position,
         use_caravans,
         route_guru,
         fleetfoot,
@@ -199,6 +217,7 @@ pub fn find_path(
             homeland,
             lowest_cost_index,
             use_soe,
+            hq_position,
             use_caravans,
             route_guru,
         ) {
@@ -206,6 +225,7 @@ pub fn find_path(
                 + (
                     edge_cost,
                     scroll_of_escape_cost,
+                    scroll_of_escape_hq_cost,
                     fleetfoot,
                     lowest_cost_index,
                     edge_index,

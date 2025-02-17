@@ -12,7 +12,7 @@ pub const EMOJI_CORNER_SIZE: f32 = 16.0;
 pub const GRID_SPACING: f32 = 2.0;
 
 pub const CELL_SIZE: f32 = 62.0;
-pub const CELL_MARGIN: f32 = 4.0;
+pub const CELL_MARGIN: i8 = 4;
 pub const CELL_ROUNDING: f32 = 5.0;
 
 pub const BLEACH_ALPHA: u8 = 166;

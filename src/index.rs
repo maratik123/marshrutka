@@ -45,12 +45,377 @@ pub enum CellIndex {
     Border { border: Border, shift: u8 },
 }
 
+#[derive(
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Hash,
+    Serialize,
+    Deserialize,
+    Debug,
+    Ord,
+    PartialOrd,
+    IntoStaticStr,
+    EnumIter,
+)]
+pub enum CellIndexType {
+    Center,
+    Homeland,
+    Border,
+}
+
+impl CellIndexType {
+    pub fn name(&self) -> &'static str {
+        self.into()
+    }
+}
+
+impl Display for CellIndexType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.name().fmt(f)
+    }
+}
+
+#[derive(
+    Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug, Ord, PartialOrd, EnumIter,
+)]
+pub enum CellIndexLiteral {
+    Center,
+    Blue,
+    Red,
+    Green,
+    Yellow,
+    YB,
+    BR,
+    RG,
+    GY,
+}
+
+impl From<CellIndex> for CellIndexLiteral {
+    fn from(cell_index: CellIndex) -> Self {
+        match cell_index {
+            CellIndex::Center => CellIndexLiteral::Center,
+            CellIndex::Homeland { homeland, .. } => homeland.into(),
+            CellIndex::Border { border, .. } => border.into(),
+        }
+    }
+}
+
+impl From<Homeland> for CellIndexLiteral {
+    fn from(value: Homeland) -> Self {
+        match value {
+            Homeland::Blue => CellIndexLiteral::Blue,
+            Homeland::Red => CellIndexLiteral::Red,
+            Homeland::Green => CellIndexLiteral::Green,
+            Homeland::Yellow => CellIndexLiteral::Yellow,
+        }
+    }
+}
+
+impl From<Border> for CellIndexLiteral {
+    fn from(value: Border) -> Self {
+        match value {
+            Border::BR => CellIndexLiteral::BR,
+            Border::RG => CellIndexLiteral::RG,
+            Border::GY => CellIndexLiteral::GY,
+            Border::YB => CellIndexLiteral::YB,
+        }
+    }
+}
+
+impl From<CellIndexLiteral> for &'static str {
+    fn from(value: CellIndexLiteral) -> Self {
+        match value {
+            CellIndexLiteral::Center => "0#0",
+            CellIndexLiteral::Blue => "B",
+            CellIndexLiteral::Red => "R",
+            CellIndexLiteral::Green => "G",
+            CellIndexLiteral::Yellow => "Y",
+            CellIndexLiteral::YB => "YB",
+            CellIndexLiteral::BR => "BR",
+            CellIndexLiteral::RG => "RG",
+            CellIndexLiteral::GY => "GY",
+        }
+    }
+}
+
+impl CellIndex {
+    pub fn mutate_by_type(self, homeland: Homeland, to: CellIndexType) -> Self {
+        match (self, to) {
+            (_, CellIndexType::Center) => CellIndexBuilder::Center,
+            (CellIndex::Homeland { .. }, CellIndexType::Homeland)
+            | (CellIndex::Border { .. }, CellIndexType::Border) => self.into(),
+            (CellIndex::Center, CellIndexType::Homeland) => CellIndexBuilder::Homeland {
+                homeland,
+                pos: Pos { x: 1, y: 1 },
+            },
+            (CellIndex::Center, CellIndexType::Border) => CellIndexBuilder::Border {
+                border: homeland.border(BorderDirection::Horizontal),
+                shift: 1,
+            },
+            (
+                CellIndex::Homeland {
+                    homeland: self_homeland,
+                    pos,
+                },
+                CellIndexType::Border,
+            ) if homeland == self_homeland || homeland.farland() == self_homeland => {
+                CellIndexBuilder::Border {
+                    border: homeland.border(BorderDirection::Horizontal),
+                    shift: pos.x,
+                }
+            }
+            (
+                CellIndex::Homeland {
+                    homeland: self_homeland,
+                    pos,
+                },
+                CellIndexType::Border,
+            ) => {
+                let (border, neighbour) = homeland.neighbour_border(BorderDirection::Horizontal);
+                if neighbour == self_homeland {
+                    CellIndexBuilder::Border {
+                        border,
+                        shift: pos.x,
+                    }
+                } else {
+                    CellIndexBuilder::Border {
+                        border: homeland.border(BorderDirection::Vertical),
+                        shift: pos.y,
+                    }
+                }
+            }
+            (CellIndex::Border { border, shift }, CellIndexType::Homeland) => {
+                let neighbours = border.neighbours();
+                CellIndexBuilder::Homeland {
+                    homeland: if neighbours.contains(&homeland) {
+                        homeland
+                    } else {
+                        neighbours[0]
+                    },
+                    pos: match border.direction() {
+                        BorderDirection::Horizontal => Pos { x: shift, y: 1 },
+                        BorderDirection::Vertical => Pos { x: 1, y: shift },
+                    },
+                }
+            }
+        }
+        .build()
+    }
+
+    pub fn mutate_by_literal(self, to: CellIndexLiteral) -> CellIndex {
+        match (self, to) {
+            (_, CellIndexLiteral::Center) => CellIndexBuilder::Center,
+            (CellIndex::Center, CellIndexLiteral::Blue) => CellIndexBuilder::Homeland {
+                homeland: Homeland::Blue,
+                pos: Pos { x: 1, y: 1 },
+            },
+            (CellIndex::Center, CellIndexLiteral::Red) => CellIndexBuilder::Homeland {
+                homeland: Homeland::Red,
+                pos: Pos { x: 1, y: 1 },
+            },
+            (CellIndex::Center, CellIndexLiteral::Green) => CellIndexBuilder::Homeland {
+                homeland: Homeland::Green,
+                pos: Pos { x: 1, y: 1 },
+            },
+            (CellIndex::Center, CellIndexLiteral::Yellow) => CellIndexBuilder::Homeland {
+                homeland: Homeland::Yellow,
+                pos: Pos { x: 1, y: 1 },
+            },
+            (CellIndex::Center, CellIndexLiteral::YB) => CellIndexBuilder::Border {
+                border: Border::YB,
+                shift: 1,
+            },
+            (CellIndex::Center, CellIndexLiteral::BR) => CellIndexBuilder::Border {
+                border: Border::BR,
+                shift: 1,
+            },
+            (CellIndex::Center, CellIndexLiteral::RG) => CellIndexBuilder::Border {
+                border: Border::RG,
+                shift: 1,
+            },
+            (CellIndex::Center, CellIndexLiteral::GY) => CellIndexBuilder::Border {
+                border: Border::GY,
+                shift: 1,
+            },
+            (CellIndex::Homeland { pos, .. }, CellIndexLiteral::Blue) => {
+                CellIndexBuilder::Homeland {
+                    homeland: Homeland::Blue,
+                    pos,
+                }
+            }
+            (CellIndex::Homeland { pos, .. }, CellIndexLiteral::Red) => {
+                CellIndexBuilder::Homeland {
+                    homeland: Homeland::Red,
+                    pos,
+                }
+            }
+            (CellIndex::Homeland { pos, .. }, CellIndexLiteral::Green) => {
+                CellIndexBuilder::Homeland {
+                    homeland: Homeland::Green,
+                    pos,
+                }
+            }
+            (CellIndex::Homeland { pos, .. }, CellIndexLiteral::Yellow) => {
+                CellIndexBuilder::Homeland {
+                    homeland: Homeland::Yellow,
+                    pos,
+                }
+            }
+            (CellIndex::Homeland { pos, .. }, CellIndexLiteral::YB) => CellIndexBuilder::Border {
+                border: Border::YB,
+                shift: pos.x,
+            },
+            (CellIndex::Homeland { pos, .. }, CellIndexLiteral::BR) => CellIndexBuilder::Border {
+                border: Border::BR,
+                shift: pos.x,
+            },
+            (CellIndex::Homeland { pos, .. }, CellIndexLiteral::RG) => CellIndexBuilder::Border {
+                border: Border::RG,
+                shift: pos.x,
+            },
+            (CellIndex::Homeland { pos, .. }, CellIndexLiteral::GY) => CellIndexBuilder::Border {
+                border: Border::GY,
+                shift: pos.x,
+            },
+            (CellIndex::Border { shift, .. }, CellIndexLiteral::Blue) => {
+                CellIndexBuilder::Homeland {
+                    homeland: Homeland::Blue,
+                    pos: Pos { x: shift, y: 1 },
+                }
+            }
+            (CellIndex::Border { shift, .. }, CellIndexLiteral::Red) => {
+                CellIndexBuilder::Homeland {
+                    homeland: Homeland::Red,
+                    pos: Pos { x: shift, y: 1 },
+                }
+            }
+            (CellIndex::Border { shift, .. }, CellIndexLiteral::Green) => {
+                CellIndexBuilder::Homeland {
+                    homeland: Homeland::Green,
+                    pos: Pos { x: shift, y: 1 },
+                }
+            }
+            (CellIndex::Border { shift, .. }, CellIndexLiteral::Yellow) => {
+                CellIndexBuilder::Homeland {
+                    homeland: Homeland::Yellow,
+                    pos: Pos { x: shift, y: 1 },
+                }
+            }
+            (CellIndex::Border { shift, .. }, CellIndexLiteral::YB) => CellIndexBuilder::Border {
+                border: Border::YB,
+                shift,
+            },
+            (CellIndex::Border { shift, .. }, CellIndexLiteral::BR) => CellIndexBuilder::Border {
+                border: Border::BR,
+                shift,
+            },
+            (CellIndex::Border { shift, .. }, CellIndexLiteral::RG) => CellIndexBuilder::Border {
+                border: Border::RG,
+                shift,
+            },
+            (CellIndex::Border { shift, .. }, CellIndexLiteral::GY) => CellIndexBuilder::Border {
+                border: Border::GY,
+                shift,
+            },
+        }
+        .build()
+    }
+}
+
+impl From<CellIndex> for CellIndexType {
+    fn from(cell_index: CellIndex) -> Self {
+        match cell_index {
+            CellIndex::Center => CellIndexType::Center,
+            CellIndex::Homeland { .. } => CellIndexType::Homeland,
+            CellIndex::Border { .. } => CellIndexType::Border,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug, Ord, PartialOrd)]
+pub enum CellIndexBuilder {
+    Center,
+    Homeland { homeland: Homeland, pos: Pos },
+    Border { border: Border, shift: u8 },
+}
+
+impl CellIndexBuilder {
+    pub const fn build(self) -> CellIndex {
+        match self {
+            CellIndexBuilder::Center
+            | CellIndexBuilder::Homeland {
+                pos: Pos { x: 0, y: 0 },
+                ..
+            }
+            | CellIndexBuilder::Border { shift: 0, .. } => CellIndex::Center,
+            CellIndexBuilder::Homeland {
+                homeland: Homeland::Yellow,
+                pos: Pos { x: 0, y },
+            }
+            | CellIndexBuilder::Homeland {
+                homeland: Homeland::Blue,
+                pos: Pos { x: 0, y },
+            } => CellIndex::Border {
+                border: Border::YB,
+                shift: y,
+            },
+            CellIndexBuilder::Homeland {
+                homeland: Homeland::Red,
+                pos: Pos { x: 0, y },
+            }
+            | CellIndexBuilder::Homeland {
+                homeland: Homeland::Green,
+                pos: Pos { x: 0, y },
+            } => CellIndex::Border {
+                border: Border::RG,
+                shift: y,
+            },
+            CellIndexBuilder::Homeland {
+                homeland: Homeland::Blue,
+                pos: Pos { x, y: 0 },
+            }
+            | CellIndexBuilder::Homeland {
+                homeland: Homeland::Red,
+                pos: Pos { x, y: 0 },
+            } => CellIndex::Border {
+                border: Border::BR,
+                shift: x,
+            },
+            CellIndexBuilder::Homeland {
+                homeland: Homeland::Green,
+                pos: Pos { x, y: 0 },
+            }
+            | CellIndexBuilder::Homeland {
+                homeland: Homeland::Yellow,
+                pos: Pos { x, y: 0 },
+            } => CellIndex::Border {
+                border: Border::GY,
+                shift: x,
+            },
+            CellIndexBuilder::Homeland { homeland, pos } => CellIndex::Homeland { homeland, pos },
+            CellIndexBuilder::Border { border, shift } => CellIndex::Border { border, shift },
+        }
+    }
+}
+
+impl From<CellIndex> for CellIndexBuilder {
+    fn from(cell_index: CellIndex) -> Self {
+        match cell_index {
+            CellIndex::Center => CellIndexBuilder::Center,
+            CellIndex::Homeland { homeland, pos } => CellIndexBuilder::Homeland { homeland, pos },
+            CellIndex::Border { border, shift } => CellIndexBuilder::Border { border, shift },
+        }
+    }
+}
+
 impl Border {
     pub fn as_str(&self) -> &'static str {
         self.into()
     }
 
-    pub fn as_str_low(&self) -> &'static str {
+    pub const fn as_str_low(&self) -> &'static str {
         match self {
             Border::BR => "br",
             Border::RG => "rg",
@@ -169,17 +534,23 @@ impl FromStr for CellIndex {
 }
 
 fn parse_as_homeland(homeland: &str, pos: &str) -> Option<CellIndex> {
-    Some(CellIndex::Homeland {
-        homeland: homeland.parse().ok()?,
-        pos: pos.parse().ok()?,
-    })
+    Some(
+        CellIndexBuilder::Homeland {
+            homeland: homeland.parse().ok()?,
+            pos: pos.parse().ok()?,
+        }
+        .build(),
+    )
 }
 
 fn parse_as_border(border: &str, shift: &str) -> Option<CellIndex> {
-    Some(CellIndex::Border {
-        border: border.parse().ok()?,
-        shift: shift.parse().ok()?,
-    })
+    Some(
+        CellIndexBuilder::Border {
+            border: border.parse().ok()?,
+            shift: shift.parse().ok()?,
+        }
+        .build(),
+    )
 }
 
 macro_rules! from_u_to_pos {

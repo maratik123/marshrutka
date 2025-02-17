@@ -7,7 +7,7 @@ use crate::deep_link::{send_command, send_command_to_bot, LINK_TO_SUPPORT_CHAT};
 use crate::emoji::EmojiMap;
 use crate::grid::{arrow, MapGrid, MapGridResponse};
 use crate::homeland::Homeland;
-use crate::index::{CellIndex, CellIndexCommandSuffix};
+use crate::index::{CellIndex, CellIndexBuilder, CellIndexCommandSuffix, CellIndexLiteral};
 use crate::pathfinder::{find_path, FindPathSettings};
 use eframe::emath::Align;
 use eframe::CreationContext;
@@ -48,7 +48,10 @@ pub struct MarshrutkaApp {
     need_to_save: bool,
     sort_by: (CostComparator, CostComparator),
     scroll_of_escape_cost: u32,
+    scroll_of_escape_hq_cost: u32,
+    hq_position: CellIndex,
     use_soe: bool,
+    use_shq: bool,
     use_caravans: bool,
     arrive_at: Time,
     pause_between_steps: u32,
@@ -236,6 +239,73 @@ impl MarshrutkaApp {
                         ui.label("Scroll of Escape cost");
                     });
                     ui.horizontal(|ui| {
+                        if egui::DragValue::new(&mut self.scroll_of_escape_hq_cost)
+                            .ui(ui)
+                            .changed()
+                        {
+                            self.need_to_save = true;
+                        }
+                        ui.label("Scroll of Escape HQ cost");
+                    });
+                    ui.horizontal(|ui| {
+                        let literal: CellIndexLiteral = self.hq_position.into();
+                        let literal_name: &'static str = literal.into();
+                        egui::ComboBox::from_id_salt("HQ position literal")
+                            .width(ui.spacing().combo_width / 2.5)
+                            .selected_text(literal_name)
+                            .show_ui(ui, |ui| {
+                                for cell_index_literal in CellIndexLiteral::iter() {
+                                    let cell_index_literal_name: &'static str =
+                                        cell_index_literal.into();
+                                    if ui
+                                        .selectable_label(
+                                            cell_index_literal == literal,
+                                            cell_index_literal_name,
+                                        )
+                                        .clicked()
+                                        && cell_index_literal != literal
+                                    {
+                                        self.hq_position =
+                                            self.hq_position.mutate_by_literal(cell_index_literal);
+                                        self.need_to_save = true;
+                                    }
+                                }
+                            });
+                        match &mut self.hq_position {
+                            CellIndex::Center => {}
+                            CellIndex::Homeland { pos, .. } => {
+                                if egui::DragValue::new(&mut pos.x)
+                                    .clamp_existing_to_range(true)
+                                    .range(1..=u8::MAX)
+                                    .ui(ui)
+                                    .changed()
+                                {
+                                    self.need_to_save = true;
+                                }
+                                ui.label("#");
+                                if egui::DragValue::new(&mut pos.y)
+                                    .clamp_existing_to_range(true)
+                                    .range(1..=u8::MAX)
+                                    .ui(ui)
+                                    .changed()
+                                {
+                                    self.need_to_save = true;
+                                }
+                            }
+                            CellIndex::Border { shift, .. } => {
+                                if egui::DragValue::new(shift)
+                                    .clamp_existing_to_range(true)
+                                    .range(1..=u8::MAX)
+                                    .ui(ui)
+                                    .changed()
+                                {
+                                    self.need_to_save = true;
+                                }
+                            }
+                        }
+                        ui.label("HQ position");
+                    });
+                    ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.pause_between_steps)
                             .clamp_existing_to_range(true)
                             .range(0..=Second::per(Hour))
@@ -276,7 +346,7 @@ impl MarshrutkaApp {
 
     fn commands(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
-            let response = egui::CollapsingHeader::new("Commands")
+            egui::CollapsingHeader::new("Commands")
                 .default_open(true)
                 .show(ui, |ui| {
                     if let Some(path) = &self.path {
@@ -415,6 +485,9 @@ impl MarshrutkaApp {
                                             AggregatedCost::ScrollOfEscape { .. } => {
                                                 "/use_soe".to_string()
                                             }
+                                            AggregatedCost::ScrollOfEscapeHQ { .. } => {
+                                                "/use_shq".to_string()
+                                            }
                                         };
                                         egui::Hyperlink::from_label_and_url(
                                             &command_str,
@@ -438,9 +511,6 @@ impl MarshrutkaApp {
                         }
                     }
                 });
-            if response.fully_closed() || response.fully_open() {
-                self.need_to_save = true;
-            }
         });
     }
 
@@ -453,6 +523,9 @@ impl MarshrutkaApp {
                     self.to.map(|s| s.to_string()).unwrap_or_default()
                 ));
                 if ui.checkbox(&mut self.use_soe, "SoE").changed() {
+                    self.need_to_save = true;
+                }
+                if ui.checkbox(&mut self.use_shq, "SHQ").changed() {
                     self.need_to_save = true;
                 }
                 if ui.checkbox(&mut self.use_caravans, "Caravans").changed() {
@@ -490,11 +563,8 @@ impl MarshrutkaApp {
                         self.need_to_save = true;
                     }
                     (centers, response)
-                });
-            if grid_response.fully_closed() || grid_response.fully_open() {
-                self.need_to_save = true;
-            }
-            let grid_response = grid_response.body_returned;
+                })
+                .body_returned;
             if let Some((path, (centers, grid_response))) = self.path.as_ref().zip(grid_response) {
                 let painter = ui.painter_at(grid_response.interact_rect);
                 let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
@@ -512,6 +582,7 @@ impl MarshrutkaApp {
                             AggregatedCost::StandardMove { .. } => Color32::BLUE,
                             AggregatedCost::Caravan(_) => Color32::DARK_GREEN,
                             AggregatedCost::ScrollOfEscape { .. } => Color32::BROWN,
+                            AggregatedCost::ScrollOfEscapeHQ { .. } => Color32::WHITE,
                         }
                         .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),
                     );
@@ -576,7 +647,13 @@ impl MarshrutkaApp {
                     FindPathSettings {
                         homeland: self.homeland,
                         scroll_of_escape_cost: self.scroll_of_escape_cost,
+                        scroll_of_escape_hq_cost: self.scroll_of_escape_hq_cost,
                         use_soe: self.use_soe,
+                        hq_position: if self.use_shq {
+                            Some(self.hq_position)
+                        } else {
+                            None
+                        },
                         use_caravans: self.use_caravans,
                         route_guru: self.route_guru_skill.into(),
                         fleetfoot: self.fleetfoot_skill.into(),
@@ -597,6 +674,7 @@ impl MarshrutkaApp {
             return;
         }
 
+        self.hq_position = CellIndexBuilder::from(self.hq_position).build();
         self.update_path();
         self.need_to_save = false;
 
@@ -654,7 +732,10 @@ impl Default for MarshrutkaApp {
             need_to_save: Default::default(),
             sort_by: (CostComparator::Legs, CostComparator::Money),
             scroll_of_escape_cost: 24,
+            scroll_of_escape_hq_cost: 75,
+            hq_position: CellIndex::Center,
             use_soe: true,
+            use_shq: false,
             use_caravans: true,
             arrive_at: Time::MIDNIGHT,
             pause_between_steps: Default::default(),
