@@ -205,8 +205,7 @@ pub fn find_path(
     dist.insert(from, TotalCost::new(from));
     heap.push(TotalCost::new(from));
     loop {
-        let top = heap.pop();
-        match top {
+        match heap.pop() {
             Some(cost) => {
                 let lowest_cost_index = cost.commands.last().unwrap().to;
                 if lowest_cost_index == to {
