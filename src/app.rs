@@ -3,14 +3,14 @@ use crate::consts::{
     FONT_CORNER_SIZE,
 };
 use crate::cost::{AggregatedCost, Command, CostComparator, TotalCost};
-use crate::deep_link::{send_command, send_command_to_bot, LINK_TO_SUPPORT_CHAT};
+use crate::deep_link::{LINK_TO_SUPPORT_CHAT, send_command, send_command_to_bot};
 use crate::emoji::EmojiMap;
-use crate::grid::{arrow, MapGrid, MapGridResponse};
+use crate::grid::{MapGrid, MapGridResponse, arrow};
 use crate::homeland::Homeland;
 use crate::index::{CellIndex, CellIndexBuilder, CellIndexCommandSuffix, CellIndexLiteral};
-use crate::pathfinder::{find_path, FindPathSettings};
-use eframe::emath::Align;
+use crate::pathfinder::{FindPathSettings, find_path};
 use eframe::CreationContext;
+use eframe::emath::Align;
 use egui::emath::Rot2;
 use egui::load::BytesPoll;
 use egui::scroll_area::ScrollBarVisibility;

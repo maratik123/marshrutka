@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 use std::iter::FusedIterator;
-use std::mem::{swap, ManuallyDrop};
+use std::mem::{ManuallyDrop, swap};
 use std::num::NonZero;
 use std::ops::{Deref, DerefMut};
 use std::ptr;
@@ -1444,7 +1444,7 @@ impl<T, C: Compare<T> + Default> FromIterator<T> for BinaryHeap<T, C> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::panic::{catch_unwind, AssertUnwindSafe};
+    use std::panic::{AssertUnwindSafe, catch_unwind};
 
     #[test]
     fn test_iterator() {

@@ -1,9 +1,9 @@
-use crate::cell::{cell_parts, Cell, CellElement};
+use crate::cell::{Cell, CellElement, cell_parts};
 use crate::consts::{ARROW_TIP_CIRCLE, ARROW_WIDTH, CELL_SIZE, GRID_SPACING};
 use crate::emoji::EmojiMap;
 use crate::homeland::Homeland;
 use crate::index::{BorderDirection, CellIndex, CellIndexBuilder, Pos};
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use eframe::emath::Rot2;
 use egui::ahash::HashSet;
 use egui::ecolor::ParseHexColorError;

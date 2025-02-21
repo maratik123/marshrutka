@@ -1,7 +1,7 @@
 use crate::index::CellIndex;
 use crate::skill::{Fleetfoot, Skill};
 use serde::{Deserialize, Serialize};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign};
