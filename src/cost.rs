@@ -342,7 +342,7 @@ impl Add<&ToFountainMove> for &TotalCost {
 }
 
 impl CostComparator {
-    const fn comparator(&self) -> impl Fn(&TotalCost, &TotalCost) -> Ordering {
+    const fn comparator(&self) -> impl Fn(&TotalCost, &TotalCost) -> Ordering + use<> {
         match self {
             CostComparator::Legs => |a: &TotalCost, b: &TotalCost| a.legs.cmp(&b.legs),
             CostComparator::Money => |a: &TotalCost, b: &TotalCost| a.money.cmp(&b.money),
@@ -382,7 +382,7 @@ impl CostComparator {
         self.into()
     }
 
-    pub fn and_then(&self, c2: CostComparator) -> impl Fn(&TotalCost, &TotalCost) -> Ordering {
+    pub fn and_then(&self, c2: CostComparator) -> impl Fn(&TotalCost, &TotalCost) -> Ordering + use<> {
         let (c2, c3) = self.eval_next(c2);
         let c1 = self.comparator();
         let c2 = c2.comparator();
