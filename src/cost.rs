@@ -382,7 +382,10 @@ impl CostComparator {
         self.into()
     }
 
-    pub fn and_then(&self, c2: CostComparator) -> impl Fn(&TotalCost, &TotalCost) -> Ordering + use<> {
+    pub fn and_then(
+        &self,
+        c2: CostComparator,
+    ) -> impl Fn(&TotalCost, &TotalCost) -> Ordering + use<> {
         let (c2, c3) = self.eval_next(c2);
         let c1 = self.comparator();
         let c2 = c2.comparator();

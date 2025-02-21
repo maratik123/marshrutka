@@ -204,41 +204,46 @@ pub fn find_path(
     let mut heap: BinaryHeap<_, _> = BinaryHeap::new_by(|a, b| comparator(b, a));
     dist.insert(from, TotalCost::new(from));
     heap.push(TotalCost::new(from));
-    while let Some(cost) = heap.pop() {
-        let lowest_cost_index = cost.commands.last().unwrap().to;
-        if lowest_cost_index == to {
-            return Some(cost);
-        }
-        if comparator(&cost, &dist[&lowest_cost_index]).is_gt() {
-            continue;
-        }
-        for (edge_index, edge_cost) in inflight_edges(
-            grid,
-            homeland,
-            lowest_cost_index,
-            use_soe,
-            hq_position,
-            use_caravans,
-            route_guru,
-        ) {
-            let next = &cost
-                + (
-                    edge_cost,
-                    scroll_of_escape_cost,
-                    scroll_of_escape_hq_cost,
-                    fleetfoot,
-                    lowest_cost_index,
-                    edge_index,
-                );
-            if dist
-                .get(&edge_index).is_none_or(|old_cost| comparator(&next, old_cost).is_lt())
-            {
-                heap.push(next.clone());
-                dist.insert(edge_index, next);
+    loop {
+        let top = heap.pop();
+        if let Some(cost) = top {
+            let lowest_cost_index = cost.commands.last().unwrap().to;
+            if lowest_cost_index == to {
+                break Some(cost);
             }
+            if comparator(&cost, &dist[&lowest_cost_index]).is_gt() {
+                continue;
+            }
+            for (edge_index, edge_cost) in inflight_edges(
+                grid,
+                homeland,
+                lowest_cost_index,
+                use_soe,
+                hq_position,
+                use_caravans,
+                route_guru,
+            ) {
+                let next = &cost
+                    + (
+                        edge_cost,
+                        scroll_of_escape_cost,
+                        scroll_of_escape_hq_cost,
+                        fleetfoot,
+                        lowest_cost_index,
+                        edge_index,
+                    );
+                if dist
+                    .get(&edge_index)
+                    .is_none_or(|old_cost| comparator(&next, old_cost).is_lt())
+                {
+                    heap.push(next.clone());
+                    dist.insert(edge_index, next);
+                }
+            }
+        } else {
+            break None;
         }
     }
-    None
 }
 
 fn caravan_cost(
