@@ -231,8 +231,7 @@ pub fn find_path(
                     edge_index,
                 );
             if dist
-                .get(&edge_index)
-                .map_or(true, |old_cost| comparator(&next, old_cost).is_lt())
+                .get(&edge_index).is_none_or(|old_cost| comparator(&next, old_cost).is_lt())
             {
                 heap.push(next.clone());
                 dist.insert(edge_index, next);
