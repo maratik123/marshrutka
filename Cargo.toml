@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Marat Bukharov <marat.buharov@gmail.com>"]
 edition = "2021"
 include = ["LICENSE-APACHE", "**/*.rs", "Cargo.toml"]
-rust-version = "1.84.1"
+rust-version = "1.85.0"
 
 [package.metadata.docs.rs]
 all-features = true
