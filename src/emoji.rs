@@ -64,7 +64,7 @@ fn svg_to_texture(
 }
 
 macro_rules! char_to_emoji_map {
-    [$(($ch:expr_2021, $path:expr_2021)),* $(,)?] => {
+    [$(($ch:expr, $path:expr)),* $(,)?] => {
         [$((
             EmojiCode::from($ch),
             include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/images/", $path)).as_ref(),
@@ -73,7 +73,7 @@ macro_rules! char_to_emoji_map {
 }
 
 macro_rules! aliases_to_chars_map {
-    [$(($alias:expr_2021, $ch:expr_2021)),* $(,)?] => {
+    [$(($alias:expr, $ch:expr)),* $(,)?] => {
         [$((
             EmojiCode::from($alias),
             EmojiCode::from($ch)
