@@ -271,14 +271,14 @@ impl MarshrutkaApp {
                                     }
                                 }
                             });
+                        let max_val = self
+                            .grid
+                            .as_ref()
+                            .map(|g| g.homeland_size() as u8)
+                            .unwrap_or(1);
                         match &mut self.hq_position {
                             CellIndex::Center => {}
                             CellIndex::Homeland { pos, .. } => {
-                                let max_val = self
-                                    .grid
-                                    .as_ref()
-                                    .map(|g| g.homeland_size() as u8)
-                                    .unwrap_or(1);
                                 if egui::DragValue::new(&mut pos.x)
                                     .clamp_existing_to_range(true)
                                     .range(1..=max_val)
@@ -300,7 +300,7 @@ impl MarshrutkaApp {
                             CellIndex::Border { shift, .. } => {
                                 if egui::DragValue::new(shift)
                                     .clamp_existing_to_range(true)
-                                    .range(1..=u8::MAX)
+                                    .range(1..=max_val)
                                     .ui(ui)
                                     .changed()
                                 {

@@ -21,7 +21,9 @@ fn inflight_edges(
 ) -> SmallVec<[(CellIndex, EdgeCost); 22]> {
     let mut ret = SmallVec::new();
     let homeland_size = grid.homeland_size();
+    // 2..4
     match vertex {
+        // 4
         CellIndex::Center => {
             // 4
             ret.extend(Border::iter().map(|border| {
@@ -31,6 +33,7 @@ fn inflight_edges(
                 )
             }));
         }
+        // 3..4
         CellIndex::Border { border, shift } => {
             // 1
             ret.push(if shift == 1 {
@@ -68,6 +71,7 @@ fn inflight_edges(
                 )
             }));
         }
+        // 2..4
         CellIndex::Homeland {
             homeland: vertex_homeland,
             pos: Pos { x, y },
@@ -196,14 +200,15 @@ pub fn find_path(
         homeland,
     }: FindPathSettings,
 ) -> Option<TotalCost> {
+    let start = TotalCost::new(from);
     if from == to {
-        return Some(TotalCost::new(from));
+        return Some(start);
     }
-    let mut dist: HashMap<_, _> = HashMap::new();
+    let mut dist = HashMap::new();
     let comparator = c1.and_then(c2);
-    let mut heap: BinaryHeap<_, _> = BinaryHeap::new_by(|a, b| comparator(b, a));
-    dist.insert(from, TotalCost::new(from));
-    heap.push(TotalCost::new(from));
+    let mut heap = BinaryHeap::new_by(|a, b| comparator(b, a));
+    dist.insert(from, start.clone());
+    heap.push(start);
     while let Some(cost) = heap.pop() {
         let lowest_cost_index = cost.commands.last().unwrap().to;
         if lowest_cost_index == to {
@@ -234,8 +239,8 @@ pub fn find_path(
                 .get(&edge_index)
                 .is_none_or(|old_cost| comparator(&next, old_cost).is_lt())
             {
-                heap.push(next.clone());
-                dist.insert(edge_index, next);
+                dist.insert(edge_index, next.clone());
+                heap.push(next);
             }
         }
     }
