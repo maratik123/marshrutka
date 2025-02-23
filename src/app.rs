@@ -8,7 +8,7 @@ use crate::emoji::EmojiMap;
 use crate::grid::{MapGrid, MapGridResponse, arrow};
 use crate::homeland::Homeland;
 use crate::index::{CellIndex, CellIndexBuilder, CellIndexCommandSuffix, CellIndexLiteral};
-use crate::pathfinder::{FindPathSettings, find_path};
+use crate::pathfinder::FindPath;
 use eframe::CreationContext;
 use eframe::emath::Align;
 use egui::emath::Rot2;
@@ -651,46 +651,41 @@ impl MarshrutkaApp {
             .from
             .zip(self.to)
             .and_then(|(from, to)| {
-                find_path(
-                    (from, to),
-                    FindPathSettings {
-                        homeland: self.homeland,
-                        scroll_of_escape_cost: self.scroll_of_escape_cost,
-                        scroll_of_escape_hq_cost: self.scroll_of_escape_hq_cost,
-                        use_soe: self.use_soe,
-                        hq_position: if self.use_shq {
-                            Some(self.hq_position)
-                        } else {
-                            None
-                        },
-                        use_caravans: self.use_caravans,
-                        route_guru: self.route_guru_skill.into(),
-                        fleetfoot: self.fleetfoot_skill.into(),
-                        sort_by: self.sort_by,
-                        grid: self.grid.as_ref().unwrap(),
+                FindPath {
+                    homeland: self.homeland,
+                    scroll_of_escape_cost: self.scroll_of_escape_cost,
+                    scroll_of_escape_hq_cost: self.scroll_of_escape_hq_cost,
+                    use_soe: self.use_soe,
+                    hq_position: if self.use_shq {
+                        Some(self.hq_position)
+                    } else {
+                        None
                     },
-                )
+                    use_caravans: self.use_caravans,
+                    route_guru: self.route_guru_skill.into(),
+                    fleetfoot: self.fleetfoot_skill.into(),
+                    sort_by: self.sort_by,
+                    grid: self.grid.as_ref().unwrap(),
+                }
+                .eval(from, to)
             })
             .map(Rc::new);
         self.path.is_some()
     }
 
     fn post_process(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        if !self.need_to_save {
-            if self.path.is_none() && self.update_path() {
-                ctx.request_repaint();
+        if self.need_to_save {
+            self.update_path();
+            self.need_to_save = false;
+
+            if let Some(storage) = frame.storage_mut() {
+                self.save_app(storage);
             }
-            return;
+
+            ctx.request_repaint();
+        } else if self.path.is_none() && self.update_path() {
+            ctx.request_repaint();
         }
-
-        self.update_path();
-        self.need_to_save = false;
-
-        if let Some(storage) = frame.storage_mut() {
-            self.save_app(storage);
-        }
-
-        ctx.request_repaint();
     }
 
     fn save_app(&mut self, storage: &mut dyn eframe::Storage) {
