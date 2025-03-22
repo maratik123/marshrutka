@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Marat Bukharov <marat.buharov@gmail.com>"]
 edition = "2024"
 include = ["LICENSE-APACHE", "**/*.rs", "Cargo.toml"]
-rust-version = "1.85.0"
+rust-version = "1.85.1"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -28,7 +28,7 @@ num = "0.4"
 num-integer = "0.1"
 num-rational = "0.4"
 num-traits = "0.2"
-resvg = { version = "0.44", default-features = false }
+resvg = { version = "0.45", default-features = false }
 simplecss = "0.2"
 smallvec = "1"
 strum = { version = "0.27", features = ["derive"] }
