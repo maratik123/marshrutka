@@ -3,7 +3,7 @@ name = "marshrutka"
 version = "0.1.0"
 authors = ["Marat Bukharov <marat.buharov@gmail.com>"]
 edition = "2024"
-include = ["LICENSE-APACHE", "**/*.rs", "Cargo.toml"]
+include = ["LICENSE-APACHE", "**/*.rs", "assets/*", "images/*", "index.html", "Trunk.toml", "Cargo.toml"]
 rust-version = "1.85.1"
 
 [package.metadata.docs.rs]
