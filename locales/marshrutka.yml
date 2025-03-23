@@ -1,0 +1,189 @@
+_version: 2
+help1:
+  en: To point "From" - LMB or short tap,
+  es: Para marcar "Desde" - LMB o tap corto,
+  ru: Для указания "Откуда" - ЛКМ или короткий тап,
+help2:
+  en: to point "To" - RMB or long tap
+  es: para marcar "Hasta" - RMB o tap largo
+  ru: для указания "Куда" - ПКМ или долгий тап
+language:
+  en: Language
+  es: Idioma
+  ru: Язык
+file:
+  en: File
+  es: Archivo
+  ru: Файл
+settings:
+  en: Settings
+  es: Ajustes
+  ru: Настройки
+quit:
+  en: Quit
+  es: Salir
+  ru: Выход
+about:
+  en: About
+  es: Acerca de
+  ru: О
+your_homeland:
+  en: "Your homeland: "
+  es: "Tu hogar: "
+  ru: "Твой замок: "
+select_your_homeland:
+  en: Select your homeland
+  es: Selecciona tu hogar
+  ru: Выбери свой замок
+Blue:
+  en: Blue
+  es: Azul
+  ru: Синий
+Red:
+  en: Red
+  es: Rojo
+  ru: Красный
+Green:
+  en: Green
+  es: Verde
+  ru: Зеленый
+Yellow:
+  en: Yellow
+  es: Amarillo
+  ru: Желтый
+sort_by:
+  en: Sort by
+  es: Ordenar por
+  ru: Сортировать по
+and_then_by:
+  en: and then by
+  es: y luego por
+  ru: и затем по
+Legs:
+  en: Legs
+  es: Pies
+  ru: Ноги
+Time:
+  en: Time
+  es: Tiempo
+  ru: Время
+Money:
+  en: Money
+  es: Dinero
+  ru: Деньги
+help_string_1:
+  en: |
+    Transport accessibility
+    for retarded people
+  es: |
+    Accesibilidad de transporte
+    para gente retarda
+  ru: |
+    Транспортная доступность
+    для инвалидов
+help_string_num:
+  en: |
+    Any numeric values can be
+    changed by dragging the number
+  ru: |
+    Любые числовые значения
+    можно изменить, перетаскивая их
+  es: |
+    Cualquier valor numérico puede
+    ser cambiado arrastrando el número
+support_chat:
+  en: Support chat
+  es: Chat de soporte
+  ru: Чат поддержки
+support_and_source:
+  en: Support and source code
+  es: Soporte y código fuente
+  ru: Поддержка и исходный код
+route_guru_skill_level:
+  en: Route Guru skill level
+  es: Nivel de habilidad Route Guru
+  ru: Уровень умения Route Guru
+fleetfoot_skill_level:
+  en: Fleetfoot skill level
+  es: Nivel de habilidad Fleetfoot
+  ru: Уровень умения Fleetfoot
+scroll_of_escape_cost:
+  en: Scroll of Escape cost
+  es: Costo Scroll of Escape
+  ru: Стоимость Scroll of Escape
+scroll_of_escape_hq_cost:
+  en: Scroll of Escape HQ cost
+  es: Costo Scroll of Escape HQ
+  ru: Стоимость Scroll of Escape HQ
+hq_position:
+  en: HQ position
+  ru: Расположение HQ
+  es: Posición HQ
+pause_between_steps:
+  en: Pause between steps (s)
+  es: Pausa entre pasos (s)
+  ru: Пауза между шагами (с)
+map_url:
+  en: Map URL
+  es: URL de mapa
+  ru: URL карты
+use_direct_chat_link:
+  en: Use direct chat link
+  es: Usar enlace de chat directo
+  ru: Использовать прямую ссылку на чат
+use_with_caution_at_least_on_android:
+  en: Use with caution, at least on android
+  es: Usa con precaucion, al menos en android
+  ru: Используйте с осторожностью, по крайней мере на андроиде
+commands:
+  en: Commands
+  es: Comandos
+  ru: Команды
+arrive_at:
+  en: "Arrive at:"
+  es: "Llegar a:"
+  ru: "Прибыть в:"
+command:
+  en: Command
+  es: Comando
+  ru: Команда
+duration:
+  en: Duration
+  es: Duración
+  ru: Длительность
+total_time:
+  en: Total time
+  es: Tiempo total
+  ru: Общее время
+schedule_at:
+  en: Schedule at
+  es: Programar a
+  ru: Запланировать в
+from_to:
+  en: From '%{from}' to '%{to}'
+  ru: Из '%{from}' в '%{to}'
+  es: De '%{from}' a '%{to}'
+caravans:
+  en: Caravans
+  es: Caravanes
+  ru: Караваны
+map:
+  en: Map
+  es: Mapa
+  ru: Карта
+hint:
+  en: "Hint: %{help1} %{help2}"
+  es: "Pista: %{help1} %{help2}"
+  ru: "Подсказка: %{help1} %{help2}"
+loading:
+  en: Loading...
+  es: Cargando...
+  ru: Загрузка...
+error:
+  en: Error.
+  es: Error.
+  ru: Ошибка.
+invalid_map:
+  en: Invalid map
+  es: Mapa inválida
+  ru: Неверная карта

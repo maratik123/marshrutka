@@ -9,17 +9,20 @@ use crate::grid::{MapGrid, MapGridResponse, arrow};
 use crate::homeland::Homeland;
 use crate::index::{CellIndex, CellIndexBuilder, CellIndexCommandSuffix, CellIndexLiteral};
 use crate::pathfinder::FindPath;
+use crate::translation::Translation;
 use eframe::CreationContext;
 use eframe::emath::Align;
 use egui::emath::Rot2;
 use egui::load::BytesPoll;
 use egui::scroll_area::ScrollBarVisibility;
 use egui::{
-    Color32, FontId, Image, ImageButton, InnerResponse, Layout, ScrollArea, TextStyle, Ui, Visuals,
-    Widget,
+    Color32, FontId, Id, Image, ImageButton, InnerResponse, Layout, ScrollArea, TextBuffer,
+    TextStyle, Ui, Visuals, Widget,
 };
+use rust_i18n::{set_locale, t};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::fmt::Display;
 use std::iter;
@@ -28,9 +31,6 @@ use strum::IntoEnumIterator;
 use time::convert::{Hour, Second};
 use time::macros::format_description;
 use time::{Duration, Time};
-
-const HELP1: &str = "To point \"From\" - LMB or short tap,";
-const HELP2: &str = "to point \"To\" - RMB or long tap";
 
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
@@ -61,6 +61,7 @@ pub struct MarshrutkaApp {
     command_via_chat_link: bool,
     route_guru_skill: u32,
     fleetfoot_skill: u32,
+    translation: Translation,
 }
 
 impl MarshrutkaApp {
@@ -75,6 +76,7 @@ impl MarshrutkaApp {
         } else {
             Default::default()
         };
+
         egui_extras::install_image_loaders(&cc.egui_ctx);
         cc.egui_ctx.set_visuals(Visuals::light());
         cc.egui_ctx.all_styles_mut(|styles| {
@@ -101,8 +103,8 @@ impl MarshrutkaApp {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 let is_web = cfg!(target_arch = "wasm32");
-                ui.menu_button("File", |ui| {
-                    if ui.button("Settings").clicked() {
+                ui.menu_button(t!("file"), |ui| {
+                    if ui.button(t!("settings")).clicked() {
                         self.show_settings = !self.show_settings;
                         self.need_to_save = true;
                         ui.close_menu();
@@ -110,18 +112,18 @@ impl MarshrutkaApp {
                     // NOTE: no File->Quit on web pages
                     if !is_web {
                         ui.separator();
-                        if ui.button("Quit").clicked() {
+                        if ui.button(t!("quit")).clicked() {
                             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                             ui.close_menu();
                         }
                     }
                 });
-                if ui.button("About").clicked() {
+                if ui.button(t!("about")).clicked() {
                     self.show_about = !self.show_about;
                     self.need_to_save = true;
                 }
                 ui.separator();
-                ui.label("Your homeland: ");
+                ui.label(t!("your_homeland"));
                 let emoji_code = &self.homeland.into();
                 if let Some(flag) = self.emojis(ui.ctx()).get_texture(emoji_code) {
                     if ImageButton::new(Image::new(&flag.corner).shrink_to_fit())
@@ -135,52 +137,57 @@ impl MarshrutkaApp {
                 ScrollArea::horizontal()
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
                     .show(ui, |ui| {
-                        let mut sort_selector = |ui: &mut Ui, label, val: &mut CostComparator| {
-                            ui.label(label);
-                            egui::ComboBox::from_id_salt(label)
-                                .width(0.0)
-                                .selected_text(val.as_str())
-                                .show_ui(ui, |ui| {
-                                    for sort in CostComparator::iter() {
-                                        if ui.selectable_value(val, sort, sort.as_str()).changed() {
-                                            self.need_to_save = true;
+                        let mut sort_selector =
+                            |ui: &mut Ui, salt, label: Cow<str>, val: &mut CostComparator| {
+                                ui.label(label.as_str());
+                                egui::ComboBox::from_id_salt(salt)
+                                    .width(0.0)
+                                    .selected_text(t!(val.as_str()))
+                                    .show_ui(ui, |ui| {
+                                        for sort in CostComparator::iter() {
+                                            if ui
+                                                .selectable_value(val, sort, t!(sort.as_str()))
+                                                .changed()
+                                            {
+                                                self.need_to_save = true;
+                                            }
                                         }
-                                    }
-                                })
-                                .response
-                                .on_hover_text(label);
-                        };
-                        sort_selector(ui, "Sort by", &mut self.sort_by.0);
-                        sort_selector(ui, "and then by", &mut self.sort_by.1);
+                                    })
+                                    .response
+                                    .on_hover_text(label);
+                            };
+                        sort_selector(ui, "sort_by", t!("sort_by"), &mut self.sort_by.0);
+                        sort_selector(ui, "and_then_by", t!("and_then_by"), &mut self.sort_by.1);
                     });
             });
         });
     }
 
     fn about(&mut self, ctx: &egui::Context) {
-        egui::Window::new("About")
+        egui::Window::new(t!("about"))
+            .id(Id::new("about"))
             .open(&mut self.show_about)
             .show(ctx, |ui| {
                 ui.with_layout(Layout::top_down(Align::Center), |ui| {
                     ui.heading("Marshrutka");
                     ui.add_space(8.0);
-                    ui.label("Transport accessibility\nfor retarded people");
+                    ui.label(t!("help_string_1"));
                     ui.add_space(8.0);
-                    ui.label(HELP1);
-                    ui.label(HELP2);
+                    ui.label(t!("help1"));
+                    ui.label(t!("help2"));
                     ui.add_space(4.0);
-                    ui.label("Any numeric values can be\nchanged by dragging the number");
+                    ui.label(t!("help_string_num"));
                     ui.add_space(8.0);
                     if cfg!(debug_assertions) {
                         egui::warn_if_debug_build(ui);
                         ui.add_space(4.0);
                     }
-                    egui::Hyperlink::from_label_and_url("Support chat", LINK_TO_SUPPORT_CHAT)
+                    egui::Hyperlink::from_label_and_url(t!("support_chat"), LINK_TO_SUPPORT_CHAT)
                         .open_in_new_tab(true)
                         .ui(ui);
                     ui.add_space(4.0);
                     egui::Hyperlink::from_label_and_url(
-                        "Support and source code",
+                        t!("support_and_source"),
                         "https://github.com/maratik123/marshrutka",
                     )
                     .open_in_new_tab(true)
@@ -190,17 +197,38 @@ impl MarshrutkaApp {
     }
 
     fn settings(&mut self, ctx: &egui::Context) {
-        egui::Window::new("Settings")
+        egui::Window::new(t!("settings"))
+            .id(Id::new("settings"))
             .open(&mut self.show_settings)
             .show(ctx, |ui| {
                 ui.vertical(|ui| {
                     ui.spacing_mut().item_spacing.y = 8.0;
-                    egui::ComboBox::from_label("Select your homeland")
-                        .selected_text(self.homeland.name())
+                    egui::ComboBox::new("select_your_homeland", t!("select_your_homeland"))
+                        .selected_text(t!(self.homeland.name()))
                         .show_ui(ui, |ui| {
                             for homeland in Homeland::iter() {
                                 if ui
-                                    .selectable_value(&mut self.homeland, homeland, homeland.name())
+                                    .selectable_value(
+                                        &mut self.homeland,
+                                        homeland,
+                                        t!(homeland.name()),
+                                    )
+                                    .changed()
+                                {
+                                    self.need_to_save = true;
+                                }
+                            }
+                        });
+                    egui::ComboBox::new("language", t!("language"))
+                        .selected_text(self.translation.name())
+                        .show_ui(ui, |ui| {
+                            for translation in Translation::iter() {
+                                if ui
+                                    .selectable_value(
+                                        &mut self.translation,
+                                        translation,
+                                        translation.name(),
+                                    )
                                     .changed()
                                 {
                                     self.need_to_save = true;
@@ -216,7 +244,7 @@ impl MarshrutkaApp {
                         {
                             self.need_to_save = true;
                         }
-                        ui.label("Route Guru skill level");
+                        ui.label(t!("route_guru_skill_level"));
                     });
                     ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.fleetfoot_skill)
@@ -227,7 +255,7 @@ impl MarshrutkaApp {
                         {
                             self.need_to_save = true;
                         }
-                        ui.label("Fleetfoot skill level");
+                        ui.label(t!("fleetfoot_skill_level"));
                     });
                     ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.scroll_of_escape_cost)
@@ -236,7 +264,7 @@ impl MarshrutkaApp {
                         {
                             self.need_to_save = true;
                         }
-                        ui.label("Scroll of Escape cost");
+                        ui.label(t!("scroll_of_escape_cost"));
                     });
                     ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.scroll_of_escape_hq_cost)
@@ -245,7 +273,7 @@ impl MarshrutkaApp {
                         {
                             self.need_to_save = true;
                         }
-                        ui.label("Scroll of Escape HQ cost");
+                        ui.label(t!("scroll_of_escape_hq_cost"));
                     });
                     ui.horizontal(|ui| {
                         let literal: CellIndexLiteral = self.hq_position.into();
@@ -308,7 +336,7 @@ impl MarshrutkaApp {
                                 }
                             }
                         }
-                        ui.label("HQ position");
+                        ui.label(t!("hq_position"));
                     });
                     ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.pause_between_steps)
@@ -319,7 +347,7 @@ impl MarshrutkaApp {
                         {
                             self.need_to_save = true;
                         }
-                        ui.label("Pause between steps (s)");
+                        ui.label(t!("pause_between_steps"));
                     });
                     ui.horizontal(|ui| {
                         ui.scope(|ui| {
@@ -336,11 +364,11 @@ impl MarshrutkaApp {
                                 self.need_to_save = true;
                             }
                         });
-                        ui.label("Map URL");
+                        ui.label(t!("map_url"));
                     });
                     if ui
-                        .checkbox(&mut self.command_via_chat_link, "Use direct chat link")
-                        .on_hover_text("Use with caution, at least on android")
+                        .checkbox(&mut self.command_via_chat_link, t!("use_direct_chat_link"))
+                        .on_hover_text(t!("use_with_caution_at_least_on_android"))
                         .changed()
                     {
                         self.need_to_save = true;
@@ -351,7 +379,8 @@ impl MarshrutkaApp {
 
     fn commands(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
-            egui::CollapsingHeader::new("Commands")
+            egui::CollapsingHeader::new(t!("commands"))
+                .id_salt("commands_header")
                 .default_open(true)
                 .show(ui, |ui| {
                     if let Some(path) = &self.path {
@@ -390,7 +419,7 @@ impl MarshrutkaApp {
                                     show_item(self, ui, '\u{23f0}', path.time);
                                     show_item(self, ui, '\u{1fa99}', path.money);
 
-                                    ui.label("Arrive at:");
+                                    ui.label(t!("arrive_at"));
                                     ui.scope(|ui| {
                                         ui.spacing_mut().item_spacing.x = 1.0;
                                         let formatter = |n, _| {
@@ -435,83 +464,85 @@ impl MarshrutkaApp {
                                     });
                                 });
 
-                                egui::Grid::new("Commands").striped(true).show(ui, |ui| {
-                                    ui.label("Command");
-                                    ui.label("Duration");
-                                    ui.label("Total time");
-                                    ui.label("Schedule at");
-                                    ui.end_row();
-                                    let mut total_time = Duration::ZERO;
-                                    let commands: SmallVec<[_; 5]> = path
-                                        .commands
-                                        .iter()
-                                        .filter(|command| {
-                                            !matches!(
-                                                command,
-                                                Command {
-                                                    aggregated_cost: AggregatedCost::NoMove,
-                                                    ..
-                                                }
-                                            )
-                                        })
-                                        .copied()
-                                        .collect();
-                                    let pause_between_steps =
-                                        Duration::seconds(self.pause_between_steps as i64);
-                                    let times: SmallVec<[_; 5]> = commands
-                                        .iter()
-                                        .rev()
-                                        .scan(self.arrive_at, |acc, command| {
-                                            *acc -= command.aggregated_cost.time()
-                                                + pause_between_steps;
-                                            Some(*acc)
-                                        })
-                                        .collect();
-                                    let time_format =
-                                        format_description!("[hour]:[minute]:[second]");
-                                    for (command, time) in
-                                        iter::zip(commands, times.into_iter().rev())
-                                    {
-                                        let command_str = match command.aggregated_cost {
-                                            AggregatedCost::NoMove => continue,
-                                            AggregatedCost::CentralMove { .. }
-                                            | AggregatedCost::StandardMove { .. } => {
-                                                format!(
-                                                    "/go_direct_{}",
-                                                    CellIndexCommandSuffix(command.to)
-                                                )
-                                            }
-                                            AggregatedCost::Caravan(_) => {
-                                                format!(
-                                                    "/car_{}",
-                                                    CellIndexCommandSuffix(command.to)
-                                                )
-                                            }
-                                            AggregatedCost::ScrollOfEscape { .. } => {
-                                                "/use_soe".to_string()
-                                            }
-                                            AggregatedCost::ScrollOfEscapeHQ { .. } => {
-                                                "/use_shq".to_string()
-                                            }
-                                        };
-                                        egui::Hyperlink::from_label_and_url(
-                                            &command_str,
-                                            if self.command_via_chat_link {
-                                                send_command_to_bot(&command_str)
-                                            } else {
-                                                send_command(&command_str)
-                                            },
-                                        )
-                                        .open_in_new_tab(true)
-                                        .ui(ui);
-                                        let command_time = command.aggregated_cost.time();
-                                        ui.label(command_time.to_string());
-                                        total_time += command_time + pause_between_steps;
-                                        ui.label(total_time.to_string());
-                                        ui.label(time.format(&time_format).unwrap());
+                                egui::Grid::new("commands_grid")
+                                    .striped(true)
+                                    .show(ui, |ui| {
+                                        ui.label(t!("command"));
+                                        ui.label(t!("duration"));
+                                        ui.label(t!("total_time"));
+                                        ui.label(t!("schedule_at"));
                                         ui.end_row();
-                                    }
-                                });
+                                        let mut total_time = Duration::ZERO;
+                                        let commands: SmallVec<[_; 5]> = path
+                                            .commands
+                                            .iter()
+                                            .filter(|command| {
+                                                !matches!(
+                                                    command,
+                                                    Command {
+                                                        aggregated_cost: AggregatedCost::NoMove,
+                                                        ..
+                                                    }
+                                                )
+                                            })
+                                            .copied()
+                                            .collect();
+                                        let pause_between_steps =
+                                            Duration::seconds(self.pause_between_steps as i64);
+                                        let times: SmallVec<[_; 5]> = commands
+                                            .iter()
+                                            .rev()
+                                            .scan(self.arrive_at, |acc, command| {
+                                                *acc -= command.aggregated_cost.time()
+                                                    + pause_between_steps;
+                                                Some(*acc)
+                                            })
+                                            .collect();
+                                        let time_format =
+                                            format_description!("[hour]:[minute]:[second]");
+                                        for (command, time) in
+                                            iter::zip(commands, times.into_iter().rev())
+                                        {
+                                            let command_str = match command.aggregated_cost {
+                                                AggregatedCost::NoMove => continue,
+                                                AggregatedCost::CentralMove { .. }
+                                                | AggregatedCost::StandardMove { .. } => {
+                                                    format!(
+                                                        "/go_direct_{}",
+                                                        CellIndexCommandSuffix(command.to)
+                                                    )
+                                                }
+                                                AggregatedCost::Caravan(_) => {
+                                                    format!(
+                                                        "/car_{}",
+                                                        CellIndexCommandSuffix(command.to)
+                                                    )
+                                                }
+                                                AggregatedCost::ScrollOfEscape { .. } => {
+                                                    "/use_soe".to_string()
+                                                }
+                                                AggregatedCost::ScrollOfEscapeHQ { .. } => {
+                                                    "/use_shq".to_string()
+                                                }
+                                            };
+                                            egui::Hyperlink::from_label_and_url(
+                                                &command_str,
+                                                if self.command_via_chat_link {
+                                                    send_command_to_bot(&command_str)
+                                                } else {
+                                                    send_command(&command_str)
+                                                },
+                                            )
+                                            .open_in_new_tab(true)
+                                            .ui(ui);
+                                            let command_time = command.aggregated_cost.time();
+                                            ui.label(command_time.to_string());
+                                            total_time += command_time + pause_between_steps;
+                                            ui.label(total_time.to_string());
+                                            ui.label(time.format(&time_format).unwrap());
+                                            ui.end_row();
+                                        }
+                                    });
                             });
                         }
                     }
@@ -522,10 +553,10 @@ impl MarshrutkaApp {
     fn central_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(format!(
-                    "From '{}' to '{}'",
-                    self.from.map(|s| s.to_string()).unwrap_or_default(),
-                    self.to.map(|s| s.to_string()).unwrap_or_default()
+                ui.label(t!(
+                    "from_to",
+                    from = self.from.map(|s| s.to_string()).unwrap_or_default(),
+                    to = self.to.map(|s| s.to_string()).unwrap_or_default()
                 ));
                 if ui.checkbox(&mut self.use_soe, "SoE").changed() {
                     self.need_to_save = true;
@@ -533,15 +564,18 @@ impl MarshrutkaApp {
                 if ui.checkbox(&mut self.use_shq, "SHQ").changed() {
                     self.need_to_save = true;
                 }
-                if ui.checkbox(&mut self.use_caravans, "Caravans").changed() {
+                if ui
+                    .checkbox(&mut self.use_caravans, t!("caravans"))
+                    .changed()
+                {
                     self.need_to_save = true;
                 }
             });
 
             ui.separator();
 
-            let grid_response = egui::CollapsingHeader::new("Map")
-                .id_salt("Map")
+            let grid_response = egui::CollapsingHeader::new(t!("map"))
+                .id_salt("map")
                 .default_open(true)
                 .show(ui, |ui| {
                     let InnerResponse {
@@ -554,7 +588,7 @@ impl MarshrutkaApp {
                         response,
                     } = ScrollArea::both()
                         .show(ui, |ui| {
-                            ui.small(format!("Hint: {HELP1} {HELP2}"));
+                            ui.small(t!("hint", help1 = t!("help1"), help2 = t!("help2")));
                             let emojis = self.emojis(ui.ctx());
                             self.grid.as_ref().unwrap().ui_content(ui, emojis)
                         })
@@ -607,7 +641,7 @@ impl MarshrutkaApp {
                 ctx.request_repaint();
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.centered_and_justified(|ui| {
-                        ui.label("Loading...");
+                        ui.label(t!("loading"));
                     });
                 });
                 return false;
@@ -617,7 +651,7 @@ impl MarshrutkaApp {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.centered_and_justified(|ui| {
                         ui.vertical(|ui| {
-                            ui.heading("Error:");
+                            ui.heading(t!("error"));
                             ui.label(e.to_string())
                         });
                     });
@@ -637,7 +671,7 @@ impl MarshrutkaApp {
             Err(err) => {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.vertical_centered_justified(|ui| {
-                        ui.heading("Invalid map");
+                        ui.heading(t!("invalid_map"));
                         ui.label(err.to_string());
                     });
                 });
@@ -696,6 +730,8 @@ impl MarshrutkaApp {
 impl eframe::App for MarshrutkaApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        set_locale(self.translation.to_locale_name());
+
         // Prepare data
         if !self.load_map(ctx) {
             return;
@@ -747,6 +783,7 @@ impl Default for MarshrutkaApp {
             command_via_chat_link: Default::default(),
             route_guru_skill: Default::default(),
             fleetfoot_skill: Default::default(),
+            translation: Translation::En,
         }
     }
 }

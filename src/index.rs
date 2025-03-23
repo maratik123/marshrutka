@@ -380,7 +380,7 @@ pub struct CellIndexCommandSuffix(pub CellIndex);
 impl Display for CellIndexCommandSuffix {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self.0 {
-            CellIndex::Center => <str as Display>::fmt("0_0", f),
+            CellIndex::Center => "0_0".fmt(f),
             CellIndex::Homeland { homeland, pos } => {
                 write!(f, "{}_{}_{}", homeland.as_abbrev_low(), pos.x, pos.y)
             }
