@@ -770,7 +770,7 @@ impl Default for MarshrutkaApp {
             homeland: Default::default(),
             need_to_save: Default::default(),
             sort_by: (CostComparator::Legs, CostComparator::Money),
-            scroll_of_escape_cost: 24,
+            scroll_of_escape_cost: 50,
             scroll_of_escape_hq_cost: 75,
             hq_position: CellIndex::Center,
             use_soe: true,
