@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoStaticStr};
 
-#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, EnumIter, IntoStaticStr)]
+#[derive(Serialize, Deserialize, Copy, Clone, Eq, PartialEq, EnumIter, IntoStaticStr, Default)]
 pub enum Translation {
+    #[default]
     En,
     Es,
     Ru,

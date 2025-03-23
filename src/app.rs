@@ -783,7 +783,7 @@ impl Default for MarshrutkaApp {
             command_via_chat_link: Default::default(),
             route_guru_skill: Default::default(),
             fleetfoot_skill: Default::default(),
-            translation: Translation::En,
+            translation: Default::default(),
         }
     }
 }
