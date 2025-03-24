@@ -77,6 +77,7 @@ impl MarshrutkaApp {
             Default::default()
         };
 
+        set_locale(result.translation.to_locale_name());
         egui_extras::install_image_loaders(&cc.egui_ctx);
         cc.egui_ctx.set_visuals(Visuals::light());
         cc.egui_ctx.all_styles_mut(|styles| {
@@ -231,6 +232,7 @@ impl MarshrutkaApp {
                                     )
                                     .changed()
                                 {
+                                    set_locale(self.translation.to_locale_name());
                                     self.need_to_save = true;
                                 }
                             }
@@ -730,8 +732,6 @@ impl MarshrutkaApp {
 impl eframe::App for MarshrutkaApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        set_locale(self.translation.to_locale_name());
-
         // Prepare data
         if !self.load_map(ctx) {
             return;
