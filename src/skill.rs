@@ -32,7 +32,7 @@ macro_rules! impl_skill {
     };
 }
 
-impl_skill!(RouteGuru, 0..=1);
+impl_skill!(RouteGuru, 0..=4);
 impl_skill!(Fleetfoot, 0..=1);
 
 macro_rules! try_from_route_guru_to_ratio {
@@ -43,8 +43,10 @@ macro_rules! try_from_route_guru_to_ratio {
             fn try_from(RouteGuru(value): RouteGuru) -> Result<Self, Self::Error> {
                 Ok(match value {
                     0 => Ratio::ONE,
-                    // SAFETY : 31 min 40 sec to 40 min = 1900 sec to 2400 sec = 19 / 24
                     1 => Ratio::new_raw(19, 24),
+                    2 => Ratio::new_raw(7, 10),
+                    3 => Ratio::new_raw(73, 120),
+                    4 => Ratio::new_raw(31, 60),
                     _ => return Err(()),
                 })
             }
@@ -62,7 +64,6 @@ macro_rules! try_from_fleetfoot_to_ratio {
             fn try_from(Fleetfoot(value): Fleetfoot) -> Result<Self, Self::Error> {
                 Ok(match value {
                     0 => Ratio::ONE,
-                    // SAFETY : 100 / 106 = 50 / 53
                     1 => Ratio::new_raw(50, 53),
                     _ => return Err(()),
                 })
