@@ -9,6 +9,7 @@ use crate::grid::{MapGrid, MapGridResponse, arrow};
 use crate::homeland::Homeland;
 use crate::index::{CellIndex, CellIndexBuilder, CellIndexCommandSuffix, CellIndexLiteral};
 use crate::pathfinder::FindPath;
+use crate::skill::{Fleetfoot, RouteGuru, Skill};
 use crate::translation::Translation;
 use eframe::CreationContext;
 use eframe::emath::Align;
@@ -240,7 +241,7 @@ impl MarshrutkaApp {
                     ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.route_guru_skill)
                             .clamp_existing_to_range(true)
-                            .range(0..=1)
+                            .range(RouteGuru::RANGE)
                             .ui(ui)
                             .changed()
                         {
@@ -251,7 +252,7 @@ impl MarshrutkaApp {
                     ui.horizontal(|ui| {
                         if egui::DragValue::new(&mut self.fleetfoot_skill)
                             .clamp_existing_to_range(true)
-                            .range(0..=1)
+                            .range(Fleetfoot::RANGE)
                             .ui(ui)
                             .changed()
                         {
