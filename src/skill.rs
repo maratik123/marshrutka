@@ -33,7 +33,7 @@ macro_rules! impl_skill {
 }
 
 impl_skill!(RouteGuru, 0..=5);
-impl_skill!(Fleetfoot, 0..=5);
+impl_skill!(Fleetfoot, 0..=3);
 
 macro_rules! try_from_route_guru_to_ratio {
     ($($t:ty)*) => {
@@ -68,8 +68,6 @@ macro_rules! try_from_fleetfoot_to_ratio {
                     1 => Ratio::new_raw(50, 53),
                     2 => Ratio::new_raw(100, 109),
                     3 => Ratio::new_raw(25, 28),
-                    4 => Ratio::new_raw(20, 23),
-                    5 => Ratio::new_raw(50, 59),
                     _ => return Err(()),
                 })
             }
