@@ -111,6 +111,7 @@ fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiTexture> {
         ('\u{1f43f}', "emoji_u1f43f.svg"),
         ('\u{1f463}', "emoji_u1f463.svg"),
         ('\u{1f48e}', "emoji_u1f48e.svg"),
+        ('\u{1f4ab}', "emoji_u1f4ab.svg"),
         ('\u{1f4cd}', "emoji_u1f4cd.svg"),
         ('\u{1f525}', "emoji_u1f525.svg"),
         ('\u{1f573}', "emoji_u1f573.svg"),
