@@ -49,7 +49,7 @@ wasm-bindgen-futures = "0.4"
 web-sys = "0.3" # to access the DOM (to hide the loading text)
 
 [profile.release]
-opt-level = 3 # fast binary and wasm
+opt-level = "z" # fast binary and wasm
 lto = true
 strip = "symbols"
 panic = "abort"
