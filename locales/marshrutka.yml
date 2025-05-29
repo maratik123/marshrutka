@@ -108,13 +108,17 @@ fleetfoot_skill_level:
   es: Nivel de habilidad Fleetfoot
   ru: Уровень умения Fleetfoot
 scroll_of_escape_cost:
-  en: Scroll of Escape cost
-  es: Costo Scroll of Escape
-  ru: Стоимость Scroll of Escape
+  en: Scroll of Escape cost (SoE)
+  es: Costo Scroll of Escape (SoE)
+  ru: Стоимость Scroll of Escape (SoE)
 scroll_of_escape_hq_cost:
-  en: Scroll of Escape HQ cost
-  es: Costo Scroll of Escape HQ
-  ru: Стоимость Scroll of Escape HQ
+  en: Scroll of Escape HQ cost (SHQ)
+  es: Costo Scroll of Escape HQ (SHQ)
+  ru: Стоимость Scroll of Escape HQ (SHQ)
+scroll_of_escape_forum_cost:
+  en: Scroll of Escape Forum cost (SFm)
+  es: Costo Scroll of Escape Forum (SFm)
+  ru: Стоимость Scroll of Escape Forum (SFm)
 hq_position:
   en: HQ position
   ru: Расположение HQ

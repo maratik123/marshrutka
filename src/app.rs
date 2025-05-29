@@ -50,9 +50,11 @@ pub struct MarshrutkaApp {
     sort_by: (CostComparator, CostComparator),
     scroll_of_escape_cost: u32,
     scroll_of_escape_hq_cost: u32,
+    scroll_of_escape_forum_cost: u32,
     hq_position: CellIndex,
     use_soe: bool,
     use_shq: bool,
+    use_sfm: bool,
     use_caravans: bool,
     arrive_at: Time,
     pause_between_steps: u32,
@@ -277,6 +279,15 @@ impl MarshrutkaApp {
                             self.need_to_save = true;
                         }
                         ui.label(t!("scroll_of_escape_hq_cost"));
+                    });
+                    ui.horizontal(|ui| {
+                        if egui::DragValue::new(&mut self.scroll_of_escape_forum_cost)
+                            .ui(ui)
+                            .changed()
+                        {
+                            self.need_to_save = true;
+                        }
+                        ui.label(t!("scroll_of_escape_forum_cost"));
                     });
                     ui.horizontal(|ui| {
                         let literal: CellIndexLiteral = self.hq_position.into();
@@ -527,6 +538,9 @@ impl MarshrutkaApp {
                                                 AggregatedCost::ScrollOfEscapeHQ { .. } => {
                                                     "/use_shq".to_string()
                                                 }
+                                                AggregatedCost::ScrollOfEscapeForum { .. } => {
+                                                    "/use_sfm".to_string()
+                                                }
                                             };
                                             egui::Hyperlink::from_label_and_url(
                                                 &command_str,
@@ -565,6 +579,9 @@ impl MarshrutkaApp {
                     self.need_to_save = true;
                 }
                 if ui.checkbox(&mut self.use_shq, "SHQ").changed() {
+                    self.need_to_save = true;
+                }
+                if ui.checkbox(&mut self.use_sfm, "SFm").changed() {
                     self.need_to_save = true;
                 }
                 if ui
@@ -625,6 +642,7 @@ impl MarshrutkaApp {
                             AggregatedCost::Caravan(_) => Color32::DARK_GREEN,
                             AggregatedCost::ScrollOfEscape { .. } => Color32::BROWN,
                             AggregatedCost::ScrollOfEscapeHQ { .. } => Color32::WHITE,
+                            AggregatedCost::ScrollOfEscapeForum { .. } => Color32::PURPLE,
                         }
                         .gamma_multiply(BLEACH_ALPHA as f32 / 255.0),
                     );
@@ -692,12 +710,14 @@ impl MarshrutkaApp {
                     homeland: self.homeland,
                     scroll_of_escape_cost: self.scroll_of_escape_cost,
                     scroll_of_escape_hq_cost: self.scroll_of_escape_hq_cost,
+                    scroll_of_escape_forum_cost: self.scroll_of_escape_forum_cost,
                     use_soe: self.use_soe,
                     hq_position: if self.use_shq {
                         Some(self.hq_position)
                     } else {
                         None
                     },
+                    use_sfm: self.use_sfm,
                     use_caravans: self.use_caravans,
                     route_guru: self.route_guru_skill.into(),
                     fleetfoot: self.fleetfoot_skill.into(),
@@ -773,9 +793,11 @@ impl Default for MarshrutkaApp {
             sort_by: (CostComparator::Legs, CostComparator::Money),
             scroll_of_escape_cost: 50,
             scroll_of_escape_hq_cost: 75,
+            scroll_of_escape_forum_cost: 100,
             hq_position: CellIndex::Center,
             use_soe: true,
             use_shq: false,
+            use_sfm: false,
             use_caravans: true,
             arrive_at: Time::MIDNIGHT,
             pause_between_steps: Default::default(),

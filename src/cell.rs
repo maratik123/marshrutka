@@ -194,6 +194,8 @@ pub fn cell_parts(center: &Option<CellElement>) -> Option<PoI> {
         Some(CellElement::Emoji(EmojiCode('\u{1f525}', None))) => PoI::Campfire,
         Some(CellElement::Emoji(EmojiCode('\u{26f2}', None)))
         | Some(CellElement::Emoji(EmojiCode('\u{26f2}', Some('\u{fe0f}')))) => PoI::Fountain,
+        Some(CellElement::Emoji(EmojiCode('\u{1f3db}', None)))
+        | Some(CellElement::Emoji(EmojiCode('\u{1F3DB}', Some('\u{fe0f}')))) => PoI::Forum,
         _ => return None,
     })
 }

@@ -25,6 +25,7 @@ use tl::HTMLTag;
 pub enum PoI {
     Campfire,
     Fountain,
+    Forum,
 }
 
 #[derive(Default)]

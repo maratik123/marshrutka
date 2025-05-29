@@ -3,6 +3,7 @@ use crate::consts::{CARAVAN_MONEY, CARAVAN_TIME, CARAVAN_TO_CENTER_MONEY, CARAVA
 use crate::cost::{CaravanCost, CostComparator, EdgeCost, TotalCost};
 use crate::grid::{MapGrid, PoI};
 use crate::homeland::Homeland;
+use crate::index::CellIndex::Center;
 use crate::index::{Border, BorderDirection, CellIndex, CellIndexBuilder, Pos};
 use crate::skill::{Fleetfoot, RouteGuru, Skill};
 use smallvec::SmallVec;
@@ -12,6 +13,7 @@ use strum::IntoEnumIterator;
 
 struct Inflight<'a> {
     use_soe: bool,
+    use_sfm: bool,
     use_caravans: bool,
     hq_position: Option<CellIndex>,
     route_guru: RouteGuru,
@@ -20,7 +22,7 @@ struct Inflight<'a> {
 }
 
 impl Inflight<'_> {
-    fn edges(&self, vertex: CellIndex) -> SmallVec<[(CellIndex, EdgeCost); 22]> {
+    fn edges(&self, vertex: CellIndex) -> SmallVec<[(CellIndex, EdgeCost); 23]> {
         let mut ret = SmallVec::new();
         let homeland_size = self.grid.homeland_size();
         // 2..4
@@ -171,6 +173,10 @@ impl Inflight<'_> {
         if let Some(hq_position) = self.hq_position {
             ret.push((hq_position, EdgeCost::ScrollOfEscapeHQ));
         }
+        // 0..1
+        if self.use_sfm {
+            ret.push((Center, EdgeCost::ScrollOfEscapeForum));
+        }
         ret
     }
 }
@@ -178,7 +184,9 @@ impl Inflight<'_> {
 pub struct FindPath<'a> {
     pub scroll_of_escape_cost: u32,
     pub scroll_of_escape_hq_cost: u32,
+    pub scroll_of_escape_forum_cost: u32,
     pub use_soe: bool,
+    pub use_sfm: bool,
     pub use_caravans: bool,
     pub hq_position: Option<CellIndex>,
     pub route_guru: RouteGuru,
@@ -197,6 +205,7 @@ impl FindPath<'_> {
         let mut dist = HashMap::new();
         let inflight = Inflight {
             use_soe: self.use_soe,
+            use_sfm: self.use_sfm,
             use_caravans: self.use_caravans,
             hq_position: self.hq_position,
             route_guru: self.route_guru,
@@ -222,6 +231,7 @@ impl FindPath<'_> {
                         edge_cost,
                         self.scroll_of_escape_cost,
                         self.scroll_of_escape_hq_cost,
+                        self.scroll_of_escape_forum_cost,
                         self.fleetfoot,
                         lowest_cost_index,
                         edge_index,

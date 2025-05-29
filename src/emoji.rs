@@ -136,6 +136,7 @@ fn init_emojis(ctx: &egui::Context) -> HashMap<EmojiCode, EmojiTexture> {
         ('\u{2728}', "emoji_u2728.svg"),
     ];
     let aliases = aliases_to_chars_map![
+        (('\u{1f3db}', '\u{fe0f}'), '\u{1f3db}'),
         (('\u{1f43f}', '\u{fe0f}'), '\u{1f43f}'),
         (('\u{1f6e1}', '\u{fe0f}'), '\u{1f6e1}'),
         (('\u{2694}', '\u{fe0f}'), '\u{2694}'),
@@ -190,9 +191,9 @@ impl TryFrom<&[char]> for EmojiCode {
 
 impl Display for EmojiCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        <char as Display>::fmt(&self.0, f)?;
+        self.0.fmt(f)?;
         if let Some(c1) = self.1 {
-            <char as Display>::fmt(&c1, f)?;
+            c1.fmt(f)?;
         }
         Ok(())
     }
