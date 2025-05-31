@@ -3,7 +3,6 @@ use crate::consts::{CARAVAN_MONEY, CARAVAN_TIME, CARAVAN_TO_CENTER_MONEY, CARAVA
 use crate::cost::{CaravanCost, CostComparator, EdgeCost, TotalCost};
 use crate::grid::{MapGrid, PoI};
 use crate::homeland::Homeland;
-use crate::index::CellIndex::Center;
 use crate::index::{Border, BorderDirection, CellIndex, CellIndexBuilder, Pos};
 use crate::skill::{Fleetfoot, RouteGuru, Skill};
 use smallvec::SmallVec;
@@ -175,7 +174,7 @@ impl Inflight<'_> {
         }
         // 0..1
         if self.use_sfm {
-            ret.push((Center, EdgeCost::ScrollOfEscapeForum));
+            ret.push((CellIndex::Center, EdgeCost::ScrollOfEscapeForum));
         }
         ret
     }

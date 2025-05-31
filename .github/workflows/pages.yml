@@ -14,7 +14,7 @@ on:
 permissions:
   contents: write # for committing to gh-pages branch.
 env:
-  RUSTCFLAGS: "-Ctarget-features=+simd128"
+  RUSTFLAGS: -Ctarget-feature=+simd128
 jobs:
   build-github-pages:
     runs-on: ubuntu-latest
