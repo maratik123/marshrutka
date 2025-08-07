@@ -5,7 +5,7 @@ authors = ["Marat Bukharov <marat.buharov@gmail.com>"]
 edition = "2024"
 include = ["LICENSE-APACHE", "**/*.rs", "assets/*", "images/*", "locales/*", "index.html", "Trunk.toml", "Cargo.toml"]
 rust-version = "1.86.0"
-
+test
 
 [package.metadata.docs.rs]
 all-features = true
